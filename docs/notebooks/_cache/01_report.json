@@ -1,0 +1,941 @@
+{
+  "env": {
+    "python": "3.13.3",
+    "seed": 20260517
+  },
+  "n_total": 6388,
+  "a1": {
+    "pump_pattern_hits": 0,
+    "drug_pattern_hits": 0,
+    "orchestra_track_count": 51,
+    "orchestra_track_caseid_counts": {
+      "Orchestra/RFTN20_VOL": 4773,
+      "Orchestra/RFTN20_RATE": 4773,
+      "Orchestra/RFTN20_CE": 4770,
+      "Orchestra/RFTN20_CP": 4770,
+      "Orchestra/RFTN20_CT": 4770,
+      "Orchestra/PPF20_VOL": 3512,
+      "Orchestra/PPF20_RATE": 3512,
+      "Orchestra/PPF20_CT": 3511,
+      "Orchestra/PPF20_CP": 3511,
+      "Orchestra/PPF20_CE": 3511,
+      "Orchestra/ROC_VOL": 281,
+      "Orchestra/ROC_RATE": 281,
+      "Orchestra/PHEN_VOL": 127,
+      "Orchestra/PHEN_RATE": 127,
+      "Orchestra/FUT_VOL": 94,
+      "Orchestra/FUT_RATE": 94,
+      "Orchestra/PGE1_VOL": 90,
+      "Orchestra/PGE1_RATE": 90,
+      "Orchestra/NEPI_RATE": 88,
+      "Orchestra/NEPI_VOL": 88,
+      "Orchestra/RFTN50_CP": 68,
+      "Orchestra/RFTN50_CT": 68,
+      "Orchestra/RFTN50_RATE": 68,
+      "Orchestra/RFTN50_VOL": 68,
+      "Orchestra/RFTN50_CE": 68,
+      "Orchestra/DOPA_VOL": 33,
+      "Orchestra/DOPA_RATE": 33,
+      "Orchestra/NTG_VOL": 32,
+      "Orchestra/NTG_RATE": 32,
+      "Orchestra/EPI_RATE": 9,
+      "Orchestra/EPI_VOL": 9,
+      "Orchestra/DEX2_VOL": 6,
+      "Orchestra/DEX2_RATE": 6,
+      "Orchestra/MRN_RATE": 5,
+      "Orchestra/MRN_VOL": 5,
+      "Orchestra/DEX4_VOL": 4,
+      "Orchestra/DEX4_RATE": 4,
+      "Orchestra/OXY_RATE": 3,
+      "Orchestra/OXY_VOL": 3,
+      "Orchestra/DOBU_VOL": 3,
+      "Orchestra/DOBU_RATE": 3,
+      "Orchestra/DTZ_VOL": 2,
+      "Orchestra/DTZ_RATE": 2,
+      "Orchestra/AMD_RATE": 1,
+      "Orchestra/AMD_VOL": 1,
+      "Orchestra/NPS_VOL": 1,
+      "Orchestra/NPS_RATE": 1,
+      "Orchestra/VASO_RATE": 1,
+      "Orchestra/VASO_VOL": 1,
+      "Orchestra/VEC_RATE": 1,
+      "Orchestra/VEC_VOL": 1
+    }
+  },
+  "a2": {
+    "per_drug": [
+      {
+        "drug_code": "RFTN20",
+        "drug_name": "remifentanil 20\u03bcg/mL",
+        "class": "opioid",
+        "n_cases": 4773,
+        "pct": 74.72
+      },
+      {
+        "drug_code": "PPF20",
+        "drug_name": "propofol 20mg/mL",
+        "class": "hypnotic",
+        "n_cases": 3512,
+        "pct": 54.98
+      },
+      {
+        "drug_code": "ROC",
+        "drug_name": "rocuronium",
+        "class": "paralytic",
+        "n_cases": 281,
+        "pct": 4.4
+      },
+      {
+        "drug_code": "PHEN",
+        "drug_name": "phenylephrine",
+        "class": "vasopressor",
+        "n_cases": 127,
+        "pct": 1.99
+      },
+      {
+        "drug_code": "FUT",
+        "drug_name": "futhan / nafamostat (protease inh)",
+        "class": "other",
+        "n_cases": 94,
+        "pct": 1.47
+      },
+      {
+        "drug_code": "PGE1",
+        "drug_name": "prostaglandin E1 (pulmonary)",
+        "class": "vasodilator",
+        "n_cases": 90,
+        "pct": 1.41
+      },
+      {
+        "drug_code": "NEPI",
+        "drug_name": "norepinephrine",
+        "class": "vasopressor",
+        "n_cases": 88,
+        "pct": 1.38
+      },
+      {
+        "drug_code": "RFTN50",
+        "drug_name": "remifentanil 50\u03bcg/mL",
+        "class": "opioid",
+        "n_cases": 68,
+        "pct": 1.06
+      },
+      {
+        "drug_code": "DOPA",
+        "drug_name": "dopamine",
+        "class": "inotrope",
+        "n_cases": 33,
+        "pct": 0.52
+      },
+      {
+        "drug_code": "NTG",
+        "drug_name": "nitroglycerin",
+        "class": "vasodilator",
+        "n_cases": 32,
+        "pct": 0.5
+      },
+      {
+        "drug_code": "EPI",
+        "drug_name": "epinephrine",
+        "class": "inotrope",
+        "n_cases": 9,
+        "pct": 0.14
+      },
+      {
+        "drug_code": "DEX2",
+        "drug_name": "dexmedetomidine (2)",
+        "class": "sedative",
+        "n_cases": 6,
+        "pct": 0.09
+      },
+      {
+        "drug_code": "MRN",
+        "drug_name": "milrinone",
+        "class": "inotrope",
+        "n_cases": 5,
+        "pct": 0.08
+      },
+      {
+        "drug_code": "DEX4",
+        "drug_name": "dexmedetomidine (4)",
+        "class": "sedative",
+        "n_cases": 4,
+        "pct": 0.06
+      },
+      {
+        "drug_code": "DOBU",
+        "drug_name": "dobutamine",
+        "class": "inotrope",
+        "n_cases": 3,
+        "pct": 0.05
+      },
+      {
+        "drug_code": "OXY",
+        "drug_name": "oxytocin (uterotonic)",
+        "class": "other",
+        "n_cases": 3,
+        "pct": 0.05
+      },
+      {
+        "drug_code": "DTZ",
+        "drug_name": "diltiazem",
+        "class": "antiarrhythmic",
+        "n_cases": 2,
+        "pct": 0.03
+      },
+      {
+        "drug_code": "AMD",
+        "drug_name": "amiodarone",
+        "class": "antiarrhythmic",
+        "n_cases": 1,
+        "pct": 0.02
+      },
+      {
+        "drug_code": "NPS",
+        "drug_name": "nitroprusside",
+        "class": "vasodilator",
+        "n_cases": 1,
+        "pct": 0.02
+      },
+      {
+        "drug_code": "VASO",
+        "drug_name": "vasopressin",
+        "class": "vasopressor",
+        "n_cases": 1,
+        "pct": 0.02
+      },
+      {
+        "drug_code": "VEC",
+        "drug_name": "vecuronium",
+        "class": "paralytic",
+        "n_cases": 1,
+        "pct": 0.02
+      }
+    ],
+    "per_class": [
+      {
+        "class": "opioid",
+        "n_cases_with_any_member": 4841,
+        "pct": 75.78
+      },
+      {
+        "class": "hypnotic",
+        "n_cases_with_any_member": 3512,
+        "pct": 54.98
+      },
+      {
+        "class": "paralytic",
+        "n_cases_with_any_member": 282,
+        "pct": 4.41
+      },
+      {
+        "class": "vasopressor",
+        "n_cases_with_any_member": 210,
+        "pct": 3.29
+      },
+      {
+        "class": "vasodilator",
+        "n_cases_with_any_member": 123,
+        "pct": 1.93
+      },
+      {
+        "class": "other",
+        "n_cases_with_any_member": 97,
+        "pct": 1.52
+      },
+      {
+        "class": "inotrope",
+        "n_cases_with_any_member": 45,
+        "pct": 0.7
+      },
+      {
+        "class": "sedative",
+        "n_cases_with_any_member": 10,
+        "pct": 0.16
+      },
+      {
+        "class": "antiarrhythmic",
+        "n_cases_with_any_member": 3,
+        "pct": 0.05
+      }
+    ]
+  },
+  "a3": {
+    "dept_n": {
+      "General surgery": 4930,
+      "Thoracic surgery": 1111,
+      "Gynecology": 230,
+      "Urology": 117
+    },
+    "rows": [
+      {
+        "drug_code": "PHEN",
+        "drug_name": "phenylephrine",
+        "class": "vasopressor",
+        "total_cases": 127,
+        "by_department": {
+          "General surgery": {
+            "n": 68,
+            "pct": 1.38
+          },
+          "Thoracic surgery": {
+            "n": 48,
+            "pct": 4.32
+          },
+          "Gynecology": {
+            "n": 9,
+            "pct": 3.91
+          },
+          "Urology": {
+            "n": 2,
+            "pct": 1.71
+          }
+        }
+      },
+      {
+        "drug_code": "NEPI",
+        "drug_name": "norepinephrine",
+        "class": "vasopressor",
+        "total_cases": 88,
+        "by_department": {
+          "General surgery": {
+            "n": 75,
+            "pct": 1.52
+          },
+          "Thoracic surgery": {
+            "n": 13,
+            "pct": 1.17
+          },
+          "Gynecology": {
+            "n": 0,
+            "pct": 0.0
+          },
+          "Urology": {
+            "n": 0,
+            "pct": 0.0
+          }
+        }
+      },
+      {
+        "drug_code": "DOPA",
+        "drug_name": "dopamine",
+        "class": "inotrope",
+        "total_cases": 33,
+        "by_department": {
+          "General surgery": {
+            "n": 33,
+            "pct": 0.67
+          },
+          "Thoracic surgery": {
+            "n": 0,
+            "pct": 0.0
+          },
+          "Gynecology": {
+            "n": 0,
+            "pct": 0.0
+          },
+          "Urology": {
+            "n": 0,
+            "pct": 0.0
+          }
+        }
+      },
+      {
+        "drug_code": "EPI",
+        "drug_name": "epinephrine",
+        "class": "inotrope",
+        "total_cases": 9,
+        "by_department": {
+          "General surgery": {
+            "n": 8,
+            "pct": 0.16
+          },
+          "Thoracic surgery": {
+            "n": 1,
+            "pct": 0.09
+          },
+          "Gynecology": {
+            "n": 0,
+            "pct": 0.0
+          },
+          "Urology": {
+            "n": 0,
+            "pct": 0.0
+          }
+        }
+      },
+      {
+        "drug_code": "DOBU",
+        "drug_name": "dobutamine",
+        "class": "inotrope",
+        "total_cases": 3,
+        "by_department": {
+          "General surgery": {
+            "n": 0,
+            "pct": 0.0
+          },
+          "Thoracic surgery": {
+            "n": 3,
+            "pct": 0.27
+          },
+          "Gynecology": {
+            "n": 0,
+            "pct": 0.0
+          },
+          "Urology": {
+            "n": 0,
+            "pct": 0.0
+          }
+        }
+      },
+      {
+        "drug_code": "VASO",
+        "drug_name": "vasopressin",
+        "class": "vasopressor",
+        "total_cases": 1,
+        "by_department": {
+          "General surgery": {
+            "n": 1,
+            "pct": 0.02
+          },
+          "Thoracic surgery": {
+            "n": 0,
+            "pct": 0.0
+          },
+          "Gynecology": {
+            "n": 0,
+            "pct": 0.0
+          },
+          "Urology": {
+            "n": 0,
+            "pct": 0.0
+          }
+        }
+      },
+      {
+        "drug_code": "NTG",
+        "drug_name": "nitroglycerin",
+        "class": "vasodilator",
+        "total_cases": 32,
+        "by_department": {
+          "General surgery": {
+            "n": 20,
+            "pct": 0.41
+          },
+          "Thoracic surgery": {
+            "n": 10,
+            "pct": 0.9
+          },
+          "Gynecology": {
+            "n": 1,
+            "pct": 0.43
+          },
+          "Urology": {
+            "n": 1,
+            "pct": 0.85
+          }
+        }
+      }
+    ]
+  },
+  "a4": {
+    "per_field": [
+      {
+        "field": "intraop_ca",
+        "n_nonnull": 6388,
+        "pct_nonnull": 100.0,
+        "n_positive": 868,
+        "pct_positive": 13.59,
+        "mean_overall": 120.782,
+        "p50": 0.0,
+        "p95": 600.0,
+        "max": 15900.0
+      },
+      {
+        "field": "intraop_colloid",
+        "n_nonnull": 6388,
+        "pct_nonnull": 100.0,
+        "n_positive": 531,
+        "pct_positive": 8.31,
+        "mean_overall": 32.114,
+        "p50": 0.0,
+        "p95": 300.0,
+        "max": 1900.0
+      },
+      {
+        "field": "intraop_crystalloid",
+        "n_nonnull": 5980,
+        "pct_nonnull": 93.61,
+        "n_positive": 5980,
+        "pct_positive": 93.61,
+        "mean_overall": 1060.237,
+        "p50": 700.0,
+        "p95": 3200.0,
+        "max": 23800.0
+      },
+      {
+        "field": "intraop_ebl",
+        "n_nonnull": 3987,
+        "pct_nonnull": 62.41,
+        "n_positive": 3976,
+        "pct_positive": 62.24,
+        "mean_overall": 363.211,
+        "p50": 150.0,
+        "p95": 1100.0,
+        "max": 30100.0
+      },
+      {
+        "field": "intraop_eph",
+        "n_nonnull": 6388,
+        "pct_nonnull": 100.0,
+        "n_positive": 3211,
+        "pct_positive": 50.27,
+        "mean_overall": 7.754,
+        "p50": 5.0,
+        "p95": 30.0,
+        "max": 300.0
+      },
+      {
+        "field": "intraop_epi",
+        "n_nonnull": 6388,
+        "pct_nonnull": 100.0,
+        "n_positive": 89,
+        "pct_positive": 1.39,
+        "mean_overall": 7.895,
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 37220.0
+      },
+      {
+        "field": "intraop_ffp",
+        "n_nonnull": 6388,
+        "pct_nonnull": 100.0,
+        "n_positive": 129,
+        "pct_positive": 2.02,
+        "mean_overall": 0.129,
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 52.0
+      },
+      {
+        "field": "intraop_ftn",
+        "n_nonnull": 6388,
+        "pct_nonnull": 100.0,
+        "n_positive": 1168,
+        "pct_positive": 18.28,
+        "mean_overall": 17.044,
+        "p50": 0.0,
+        "p95": 100.0,
+        "max": 200.0
+      },
+      {
+        "field": "intraop_mdz",
+        "n_nonnull": 6388,
+        "pct_nonnull": 100.0,
+        "n_positive": 80,
+        "pct_positive": 1.25,
+        "mean_overall": 0.037,
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 8.0
+      },
+      {
+        "field": "intraop_phe",
+        "n_nonnull": 6388,
+        "pct_nonnull": 100.0,
+        "n_positive": 844,
+        "pct_positive": 13.21,
+        "mean_overall": 32.631,
+        "p50": 0.0,
+        "p95": 180.0,
+        "max": 4100.0
+      },
+      {
+        "field": "intraop_ppf",
+        "n_nonnull": 6388,
+        "pct_nonnull": 100.0,
+        "n_positive": 2335,
+        "pct_positive": 36.55,
+        "mean_overall": 39.777,
+        "p50": 0.0,
+        "p95": 150.0,
+        "max": 200.0
+      },
+      {
+        "field": "intraop_rbc",
+        "n_nonnull": 6388,
+        "pct_nonnull": 100.0,
+        "n_positive": 352,
+        "pct_positive": 5.51,
+        "mean_overall": 0.47,
+        "p50": 0.0,
+        "p95": 1.0,
+        "max": 800.0
+      },
+      {
+        "field": "intraop_rocu",
+        "n_nonnull": 6388,
+        "pct_nonnull": 100.0,
+        "n_positive": 5942,
+        "pct_positive": 93.02,
+        "mean_overall": 72.825,
+        "p50": 70.0,
+        "p95": 130.0,
+        "max": 330.0
+      },
+      {
+        "field": "intraop_uo",
+        "n_nonnull": 3707,
+        "pct_nonnull": 58.03,
+        "n_positive": 3684,
+        "pct_positive": 57.67,
+        "mean_overall": 250.867,
+        "p50": 160.0,
+        "p95": 740.0,
+        "max": 5750.0
+      },
+      {
+        "field": "intraop_vecu",
+        "n_nonnull": 6388,
+        "pct_nonnull": 100.0,
+        "n_positive": 12,
+        "pct_positive": 0.19,
+        "mean_overall": 0.017,
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 20.0
+      }
+    ]
+  },
+  "a4b": {
+    "per_field": [
+      {
+        "field": "intraop_eph",
+        "by_department": {
+          "General surgery": {
+            "n_positive": 2652,
+            "n_total": 4930,
+            "pct_positive": 53.79,
+            "mean_when_positive": 16.11
+          },
+          "Thoracic surgery": {
+            "n_positive": 380,
+            "n_total": 1111,
+            "pct_positive": 34.2,
+            "mean_when_positive": 11.46
+          },
+          "Gynecology": {
+            "n_positive": 113,
+            "n_total": 230,
+            "pct_positive": 49.13,
+            "mean_when_positive": 14.29
+          },
+          "Urology": {
+            "n_positive": 66,
+            "n_total": 117,
+            "pct_positive": 56.41,
+            "mean_when_positive": 12.5
+          }
+        }
+      },
+      {
+        "field": "intraop_phe",
+        "by_department": {
+          "General surgery": {
+            "n_positive": 619,
+            "n_total": 4930,
+            "pct_positive": 12.56,
+            "mean_when_positive": 243.33
+          },
+          "Thoracic surgery": {
+            "n_positive": 172,
+            "n_total": 1111,
+            "pct_positive": 15.48,
+            "mean_when_positive": 251.94
+          },
+          "Gynecology": {
+            "n_positive": 42,
+            "n_total": 230,
+            "pct_positive": 18.26,
+            "mean_when_positive": 302.62
+          },
+          "Urology": {
+            "n_positive": 11,
+            "n_total": 117,
+            "pct_positive": 9.4,
+            "mean_when_positive": 161.82
+          }
+        }
+      },
+      {
+        "field": "intraop_epi",
+        "by_department": {
+          "General surgery": {
+            "n_positive": 85,
+            "n_total": 4930,
+            "pct_positive": 1.72,
+            "mean_when_positive": 590.48
+          },
+          "Thoracic surgery": {
+            "n_positive": 3,
+            "n_total": 1111,
+            "pct_positive": 0.27,
+            "mean_when_positive": 76.67
+          },
+          "Gynecology": {
+            "n_positive": 1,
+            "n_total": 230,
+            "pct_positive": 0.43,
+            "mean_when_positive": 10.0
+          },
+          "Urology": {
+            "n_positive": 0,
+            "n_total": 117,
+            "pct_positive": 0.0,
+            "mean_when_positive": 0.0
+          }
+        }
+      },
+      {
+        "field": "intraop_rbc",
+        "by_department": {
+          "General surgery": {
+            "n_positive": 307,
+            "n_total": 4930,
+            "pct_positive": 6.23,
+            "mean_when_positive": 8.02
+          },
+          "Thoracic surgery": {
+            "n_positive": 35,
+            "n_total": 1111,
+            "pct_positive": 3.15,
+            "mean_when_positive": 3.49
+          },
+          "Gynecology": {
+            "n_positive": 8,
+            "n_total": 230,
+            "pct_positive": 3.48,
+            "mean_when_positive": 51.88
+          },
+          "Urology": {
+            "n_positive": 2,
+            "n_total": 117,
+            "pct_positive": 1.71,
+            "mean_when_positive": 2.5
+          }
+        }
+      },
+      {
+        "field": "intraop_ffp",
+        "by_department": {
+          "General surgery": {
+            "n_positive": 117,
+            "n_total": 4930,
+            "pct_positive": 2.37,
+            "mean_when_positive": 6.54
+          },
+          "Thoracic surgery": {
+            "n_positive": 12,
+            "n_total": 1111,
+            "pct_positive": 1.08,
+            "mean_when_positive": 4.83
+          },
+          "Gynecology": {
+            "n_positive": 0,
+            "n_total": 230,
+            "pct_positive": 0.0,
+            "mean_when_positive": 0.0
+          },
+          "Urology": {
+            "n_positive": 0,
+            "n_total": 117,
+            "pct_positive": 0.0,
+            "mean_when_positive": 0.0
+          }
+        }
+      }
+    ]
+  },
+  "a5": {
+    "seed": 20260517,
+    "n": 100,
+    "first10": [
+      12,
+      109,
+      161,
+      239,
+      267,
+      278,
+      337,
+      415,
+      417,
+      573
+    ],
+    "last5": [
+      6199,
+      6209,
+      6267,
+      6269,
+      6291
+    ],
+    "saved_to": "docs\\notebooks\\_cache\\sample100.csv"
+  },
+  "a6": {
+    "per_case": [
+      {
+        "caseid": 20,
+        "duration_s": 25875,
+        "n_segments": 94,
+        "n_short_lt60s": 70,
+        "n_medium_60_600s": 1,
+        "n_long_ge600s": 23,
+        "first_8_events": [
+          {
+            "start_s": 187,
+            "end_s": 823,
+            "dur_s": 636
+          },
+          {
+            "start_s": 824,
+            "end_s": 1812,
+            "dur_s": 988
+          },
+          {
+            "start_s": 1813,
+            "end_s": 1821,
+            "dur_s": 8
+          },
+          {
+            "start_s": 1822,
+            "end_s": 1825,
+            "dur_s": 3
+          },
+          {
+            "start_s": 1826,
+            "end_s": 1828,
+            "dur_s": 2
+          },
+          {
+            "start_s": 1829,
+            "end_s": 1830,
+            "dur_s": 1
+          },
+          {
+            "start_s": 1831,
+            "end_s": 1832,
+            "dur_s": 1
+          },
+          {
+            "start_s": 1833,
+            "end_s": 1836,
+            "dur_s": 3
+          }
+        ],
+        "rate_max": 10.199999809265137
+      },
+      {
+        "caseid": 28,
+        "duration_s": 26520,
+        "n_segments": 84,
+        "n_short_lt60s": 64,
+        "n_medium_60_600s": 0,
+        "n_long_ge600s": 20,
+        "first_8_events": [
+          {
+            "start_s": 6732,
+            "end_s": 7402,
+            "dur_s": 670
+          },
+          {
+            "start_s": 7403,
+            "end_s": 7410,
+            "dur_s": 7
+          },
+          {
+            "start_s": 7411,
+            "end_s": 7412,
+            "dur_s": 1
+          },
+          {
+            "start_s": 7413,
+            "end_s": 8399,
+            "dur_s": 986
+          },
+          {
+            "start_s": 8400,
+            "end_s": 8409,
+            "dur_s": 9
+          },
+          {
+            "start_s": 8410,
+            "end_s": 8417,
+            "dur_s": 7
+          },
+          {
+            "start_s": 8418,
+            "end_s": 8419,
+            "dur_s": 1
+          },
+          {
+            "start_s": 8420,
+            "end_s": 9418,
+            "dur_s": 998
+          }
+        ],
+        "rate_max": 20.0
+      },
+      {
+        "caseid": 61,
+        "duration_s": 8690,
+        "n_segments": 16,
+        "n_short_lt60s": 12,
+        "n_medium_60_600s": 1,
+        "n_long_ge600s": 3,
+        "first_8_events": [
+          {
+            "start_s": 4773,
+            "end_s": 5577,
+            "dur_s": 804
+          },
+          {
+            "start_s": 5578,
+            "end_s": 5579,
+            "dur_s": 1
+          },
+          {
+            "start_s": 5580,
+            "end_s": 5581,
+            "dur_s": 1
+          },
+          {
+            "start_s": 5582,
+            "end_s": 5583,
+            "dur_s": 1
+          },
+          {
+            "start_s": 5584,
+            "end_s": 5589,
+            "dur_s": 5
+          },
+          {
+            "start_s": 5590,
+            "end_s": 6613,
+            "dur_s": 1023
+          },
+          {
+            "start_s": 6614,
+            "end_s": 6615,
+            "dur_s": 1
+          },
+          {
+            "start_s": 6616,
+            "end_s": 6619,
+            "dur_s": 3
+          }
+        ],
+        "rate_max": 20.0
+      }
+    ],
+    "rule_hypothesis": "rate_>0 segment dur < 60s \u21d2 bolus-like; >= 600s \u21d2 continuous infusion (\uc7a0\uc815, [CLINICIAN-REVIEW] \ud544\uc694)"
+  }
+}

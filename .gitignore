@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Testing / caching
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-specific large caches / outputs
+docs/notebooks/_cache/*.csv
+data/cohort/*.parquet
+data/runs/*.jsonl
+data/runs/*.json
+
+# Logs
+*.log
+
+# Local Claude settings (keep team-shared .claude/ tracked)
+.claude/settings.local.json
+.claude/agent-memory/*/MEMORY.md
+.claude/agent-memory/*/*.md

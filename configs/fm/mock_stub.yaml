@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Mock FM Tier 1 — Stub config / Tier 1 Stub 설정.
+#
+# Owner: plan_1.1.5 (StubBiosignalFM).
+# Spec : docs/fm_interface_guide.md §1 (Result types), §2 (Protocol).
+#        ADR-011 §"3 tiers".
+#
+# Purpose / 용도:
+#   - Fix the interface and simulate latency. Outputs are RANDOM.
+#   - Interface 고정 + latency 시뮬레이션. 출력은 random.
+#   - NOT for reasoning validation — use mock_rule_based for that.
+#   - reasoning 검증용 X — 그건 mock_rule_based.
+#
+# Tunable fields / 조정 가능 필드:
+#   seed                  : random seed for reproducibility.
+#                           재현성을 위한 random seed.
+#   latent_dim            : dimension of `encode()` output.
+#                           `encode()` 출력 차원.
+#   latency_sim_sec       : global default sleep (s) for every method.
+#                           모든 method의 기본 sleep (초).
+#   latency_per_method    : per-method override (method name → seconds).
+#                           method별 override.
+#   latency_jitter_pct    : ±jitter as a fraction of base sleep (e.g. 0.15 = ±15%).
+#                           base sleep 대비 ±jitter 비율.
+# ─────────────────────────────────────────────────────────────────────────────
+fm:
+  implementation: mock_stub
+  config:
+    seed: 42
+    latent_dim: 128
+    # Latency profile mimicking the real-FM expectation (sprint plan §Risk).
+    # Real FM expected latency를 모사 (sprint plan §Risk).
+    latency_sim_sec: 0.0   # 0 = no sleep (fast unit-test mode)
+    latency_per_method:
+      encode:                   0.080   # ~80ms FM forward proxy
+      predict_hypotension:      0.030
+      predict_cardiac_arrest:   0.030
+      assess_signal_quality:    0.010
+      cross_modal_consistency:  0.020
+      temporal_trend:           0.015
+      forecast_signal:          0.050
+      anomaly_score:            0.015
+    latency_jitter_pct: 0.15   # ±15% jitter

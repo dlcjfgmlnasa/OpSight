@@ -1,0 +1,131 @@
+# Surgery-aware Context Taxonomy (plan_1.5 산출물)
+# Spec: docs/project_brief.md §1 Core Characteristic #4 (surgery-aware).
+# Owner: vitaldb-domain-expert.
+#
+# 본 YAML 은 tool 15 (`surgery_context_awareness`) 와 plan_1.6 system prompt 가
+# 소비. ⚠️ 모든 hint 는 통계적/일반적 경향이며 진단·치료 권고가 아니다.
+# [CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]
+#
+# Cohort distribution (`data/cohort/manifest.parquet`, 2026-05-17, default policy):
+#   general 76% / thoracic 18% / gynecology 4% / urology 2%
+
+version: "v1"
+last_updated: "2026-05-17"
+
+# ── Surgery types — VitalDB `department` 4-bucket frozen ──
+# Pre-Phase 3 finding: VitalDB 가 이미 정확한 axis 를 publish.
+# 재매핑 없이 import + freeze (plan_1.5 task 1).
+surgery_types:
+  general:
+    vitaldb_department: "General surgery"
+    cohort_pct: 76.3
+    description: "비심장 일반 / 복부 수술 (general / abdominal). Colorectal, Stomach, Biliary/Pancreas, Breast, Transplantation 등 포함."
+  thoracic:
+    vitaldb_department: "Thoracic surgery"
+    cohort_pct: 18.0
+    description: "흉부 수술 (thoracic). 폐 resection, mediastinal, esophagectomy 등."
+  gynecology:
+    vitaldb_department: "Gynecology"
+    cohort_pct: 3.8
+    description: "부인과 수술 (gynecology). Hysterectomy 등 골반강 수술."
+  urology:
+    vitaldb_department: "Urology"
+    cohort_pct: 1.9
+    description: "비뇨기과 수술 (urology). Nephrectomy / cystectomy / prostatectomy 등. ⚠️ n=112 — wide CI."
+
+# ── Optype subcategories (mid-granularity, reference only) ──
+# 11 bucket — 본 프로젝트의 surgery-type axis 는 `department` 가 primary.
+# `optype` 은 hint 정밀화 시 참고용.
+optype_subcategories:
+  - Colorectal           # n≈1350
+  - Biliary/Pancreas     # n≈812
+  - Others               # n≈799
+  - Stomach              # n≈676
+  - Major resection      # n≈584
+  - Minor resection      # n≈553
+  - Breast               # n≈434
+  - Transplantation      # n≈403
+  - Vascular             # n≈262
+  - Hepatic              # n≈258
+  - Thoracic_subset      # rest
+
+# ── Surgery phases (plan_1.5 task 2) ──
+# Time-ratio heuristic — VitalDB 의 anestart / opstart / opend / aneend timestamp
+# 와 시간 비율 기반.
+phases:
+  induction:
+    description: "마취 유도 phase (induction). 약물 투여 + 기도 확보 시기."
+    heuristic_boundary: "case 시작 ~ opstart (또는 첫 15 분, whichever earlier)"
+    typical_hemodynamic_events:
+      - "induction hypotension (마취제 유도 시 일과성 저혈압)"
+      - "intubation response (삽관 시 일시적 혈압/심박 상승)"
+  maintenance:
+    description: "수술 진행 phase (maintenance). 마취 안정 유지 시기."
+    heuristic_boundary: "opstart ~ opend (대부분의 case 시간)"
+    typical_hemodynamic_events:
+      - "blood loss related hemodynamic changes"
+      - "anesthetic depth fluctuations"
+      - "fluid balance shifts"
+  emergence:
+    description: "각성 phase (emergence). 마취제 감량 + 자발 호흡 회복."
+    heuristic_boundary: "opend ~ aneend (또는 마지막 10 분)"
+    typical_hemodynamic_events:
+      - "emergence hypertension (각성 시 혈압 상승)"
+      - "extubation response"
+
+# ── (surgery_type × phase) → reasoning hints (plan_1.5 task 3) ──
+# 모든 hint 에 [CLINICIAN-REVIEW] marker. *통계적 일반 경향* 만, 진단/치료 권고 X.
+hints:
+  general:
+    induction:
+      hint: "복부 수술 유도 시 일과성 저혈압 가능성을 임상의가 평가할 수 있다."
+      clinical_review: "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+    maintenance:
+      hint: "복부 수술 maintenance 에서 혈역학 변동은 수액 balance / 출혈 / 마취제 effect-site 변화와 관련 있을 수 있다."
+      clinical_review: "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+    emergence:
+      hint: "복부 수술 각성기에 혈압 상승 / 통증 반응이 일반적으로 관찰된다."
+      clinical_review: "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+  thoracic:
+    induction:
+      hint: "흉부 수술 유도 + one-lung ventilation 전환 시 일과성 hypoxemia / 혈역학 변화 가능성."
+      clinical_review: "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+    maintenance:
+      hint: "흉부 maintenance — OLV 중 hypoxemia / 수액 관리 challenges 가 보고된다."
+      clinical_review: "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+    emergence:
+      hint: "흉부 각성기 — 호흡 회복 + 흉관 관리 + 통증 반응 영향."
+      clinical_review: "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+  gynecology:
+    induction:
+      hint: "부인과 수술 유도 — Trendelenburg 자세 영향 가능성 (해당 시)."
+      clinical_review: "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+    maintenance:
+      hint: "부인과 maintenance — pneumoperitoneum / 자세 영향이 혈역학에 작용할 수 있다."
+      clinical_review: "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+    emergence:
+      hint: "부인과 각성기 — 자세 복원 + 혈압 정상화 시기."
+      clinical_review: "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+  urology:
+    induction:
+      hint: "비뇨기 수술 유도 — 환자 특성에 따라 변동 (cohort n=112, wide CI)."
+      clinical_review: "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+    maintenance:
+      hint: "비뇨기 maintenance — TURP / nephrectomy 등 수술별 특성 영향."
+      clinical_review: "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+    emergence:
+      hint: "비뇨기 각성기 — 일반적 emergence 패턴."
+      clinical_review: "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+
+# ── Consumers (plan_1.5 task 5) ──
+# 본 YAML 의 어떤 key 가 어디서 소비되는가 — downstream 회귀 방지용.
+consumers:
+  - path: "vitalagent/tools/auxiliary_tools.py::tool_surgery_context_awareness"
+    consumes: ["surgery_types", "phases", "hints"]
+    note: "Tool 15 — 현재 hardcoded priors STUB. 본 YAML 합류 시 로드로 교체."
+  - path: "prompts/v1_heavy_deep_brief.md (v2 follow-up)"
+    consumes: ["surgery_types", "hints"]
+    note: "Heavy LLM 의 §[Surgery context] section context."
+  - path: "vitalagent/baselines/labels.py + features.py"
+    consumes: ["phases"]
+    note: "Phase boundary 휴리스틱 — feature window 결정 시 사용 가능."
