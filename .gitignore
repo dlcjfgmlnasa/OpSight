@@ -38,10 +38,8 @@ data/runs/*.json
 # Logs
 *.log
 
-# Local Claude settings (keep team-shared .claude/ tracked)
-.claude/settings.local.json
-.claude/agent-memory/*/MEMORY.md
-.claude/agent-memory/*/*.md
-
-# Obsidian app workspace metadata (per-user UI state)
-obsidian/.obsidian/
+# Claude / planning / docs / obsidian (local only — not tracked)
+.claude/
+.plans/
+docs/
+obsidian/
