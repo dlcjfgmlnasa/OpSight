@@ -11,7 +11,7 @@
 
 ## Context (배경)
 
-`ADR-012`는 VitalAgent task suite의 Tier 4 (Intervention Response, 3 tasks)를 제안한다. 본 ADR은 Tier 4를 *어떻게 학습할지*에 대한 별도 결정이다.
+`ADR-012`는 OpSight task suite의 Tier 4 (Intervention Response, 3 tasks)를 제안한다. 본 ADR은 Tier 4를 *어떻게 학습할지*에 대한 별도 결정이다.
 
 Tier 4의 3 task (T4.1 Vasopressor, T4.2 Fluid, T4.3 Anesthetic change)는 모두 공통 형식을 갖는다.
 
@@ -82,7 +82,7 @@ class InterventionSpec:
 
 ### Positive (긍정적 영향)
 
-- VitalAgent의 가장 인상적 차별점 — "intervention을 알면 trajectory가 달라지는가"에 대한 정량 답변 가능.
+- OpSight의 가장 인상적 차별점 — "intervention을 알면 trajectory가 달라지는가"에 대한 정량 답변 가능.
 - Stage 4 임상의 평가에서 시나리오성이 가장 강한 산출물.
 - Forecasting baseline (Tier 3 T3.1)과의 비교가 자연스럽게 ablation 결과가 됨.
 

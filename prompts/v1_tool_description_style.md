@@ -2,13 +2,13 @@
 
 > 16 개 tool 의 `description` 필드를 *어떻게 작성할지* 의 guide.
 > 본 guide 는 `plan_1.7` (`langgraph-engineer` 가 owner) 가 16 tool spec 을 작성할 때 따른다.
-> 동시에 `vitalagent/tools/registry.py` 의 inline description 도 본 guide 를 따른다.
+> 동시에 `opsight/tools/registry.py` 의 inline description 도 본 guide 를 따른다.
 
 ---
 
 ## 왜 description 이 중요한가
 
-VitalAgent 의 LLM 은 *tool 을 직접 선택*하지 않는다 (rule-based 호출, brief §13.3). 그러나 LLM 은 *tool 결과를 해석* 할 때 description 을 읽는다. Description 이 모호하면:
+OpSight 의 LLM 은 *tool 을 직접 선택*하지 않는다 (rule-based 호출, brief §13.3). 그러나 LLM 은 *tool 결과를 해석* 할 때 description 을 읽는다. Description 이 모호하면:
 
 - LLM 이 risk 값의 *단위 / 의미*를 오해
 - `[Evidence]` 또는 `[Limitations]` section 에서 부정확 / 환각

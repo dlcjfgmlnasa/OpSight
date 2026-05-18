@@ -18,8 +18,8 @@ from dataclasses import asdict, fields
 import pytest
 import torch
 
-from vitalagent.fm.mock_stub import StubBiosignalFM
-from vitalagent.fm.result_types import (
+from opsight.fm.mock_stub import StubBiosignalFM
+from opsight.fm.result_types import (
     AnomalyResult,
     ArrestResult,
     ConsistencyResult,

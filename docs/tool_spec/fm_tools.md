@@ -1,8 +1,8 @@
 # FM-based Tools (1–7) — Spec (plan_1.7)
 
 > 7 개 FM tool 의 정식 schema + LLM description + failure mode.
-> 의존성: `vitalagent/fm/interface.py` (BiosignalFMInterface Protocol), `vitalagent/fm/result_types.py` (7 frozen Result dataclass).
-> 본 문서는 `vitalagent/tools/fm_tools.py` 의 정식 spec.
+> 의존성: `opsight/fm/interface.py` (BiosignalFMInterface Protocol), `opsight/fm/result_types.py` (7 frozen Result dataclass).
+> 본 문서는 `opsight/tools/fm_tools.py` 의 정식 spec.
 > Description tone: `prompts/v1_tool_description_style.md` 의 4-line skeleton 준수.
 
 ---

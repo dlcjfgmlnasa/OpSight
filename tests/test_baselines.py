@@ -17,24 +17,24 @@ import numpy as np
 import pytest
 import torch
 
-from vitalagent.baselines import BaselineFMAdapter, BaselineConfig
-from vitalagent.baselines.features import (
+from opsight.baselines import BaselineFMAdapter, BaselineConfig
+from opsight.baselines.features import (
     ABP_FEATURE_NAMES,
     MULTIMODAL_FEATURE_NAMES,
     extract_abp_features,
     extract_multimodal_features,
 )
-from vitalagent.baselines.hatib_style import (
+from opsight.baselines.hatib_style import (
     HATIB_LIKE_FEATURE_NAMES,
     HatibStyleBaseline,
     extract_hatib_like_features,
 )
-from vitalagent.baselines.labels import label_h5, label_h15, label_hypotension_window
-from vitalagent.baselines.logreg_abp import LogRegABPBaseline
-from vitalagent.baselines.lstm_abp import LSTMABPBaseline
-from vitalagent.baselines.splits import make_splits
-from vitalagent.baselines.xgb_multimodal import XGBMultimodalBaseline
-from vitalagent.fm.interface import BiosignalFMInterface
+from opsight.baselines.labels import label_h5, label_h15, label_hypotension_window
+from opsight.baselines.logreg_abp import LogRegABPBaseline
+from opsight.baselines.lstm_abp import LSTMABPBaseline
+from opsight.baselines.splits import make_splits
+from opsight.baselines.xgb_multimodal import XGBMultimodalBaseline
+from opsight.fm.interface import BiosignalFMInterface
 
 
 # ── Synthetic signal helpers / 합성 signal 헬퍼 ──

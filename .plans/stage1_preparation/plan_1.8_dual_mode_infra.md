@@ -13,39 +13,39 @@
 
 - [x] **[Priority: High]** LangGraph `AgentState` schema 정의. (2026-05-16)
   - 입력: `docs/project_brief.md §6`, `plan_1.7` tool envelope
-  - 출력: `vitalagent/state.py` — Pydantic `AgentState`. field: `case_id`, `sim_time_s`, `mode` (`shallow` / `deep`), `last_tool_results` (list[ToolResponse]), `last_deep_trigger_time_s`, `risk_history`, `quality_history`, `brief_history`, `trace_id`
+  - 출력: `opsight/state.py` — Pydantic `AgentState`. field: `case_id`, `sim_time_s`, `mode` (`shallow` / `deep`), `last_tool_results` (list[ToolResponse]), `last_deep_trigger_time_s`, `risk_history`, `quality_history`, `brief_history`, `trace_id`
   - 의존성: `plan_1.7` envelope 초안
   - 참고: typed (Pydantic). state는 직렬화 가능해야 한다 (trace 저장용).
 
 - [x] **[Priority: High]** **시뮬레이션된 실시간 (simulated real-time) clock** 구현. (2026-05-16)
   - 입력: VitalDB case timeline
-  - 출력: `vitalagent/sim_clock.py` — `SimClock` class. 1초 또는 30초 tick으로 진행 + wall-clock 측정 hook 보유.
+  - 출력: `opsight/sim_clock.py` — `SimClock` class. 1초 또는 30초 tick으로 진행 + wall-clock 측정 hook 보유.
   - 의존성: 없음
   - 참고: `t` 시점 이후 데이터는 절대 노출되지 않는다 (brief §13.2). 위반 시 leakage guard가 fail한다.
 
 - [x] **[Priority: High]** Shallow-loop node 구현 (30초 tick마다). (2026-05-16, placeholder LLM 사용 — plan_1.6 도착 시 vLLM 대체)
   - 입력: `AgentState`, `SimClock`, tool registry
-  - 출력: `vitalagent/nodes/shallow_loop.py` — quick tool 5–6개 병렬 실행, Light LLM 호출, narration 출력
+  - 출력: `opsight/nodes/shallow_loop.py` — quick tool 5–6개 병렬 실행, Light LLM 호출, narration 출력
   - 의존성: `plan_1.7` (stub FM tool callable), `plan_1.6` Light prompt v1
   - 참고: latency 목표 < 15초로 측정.
   - **Follow-up (ADR-016 Signal Access)**: Shallow tool set 에 **17 `get_current_vitals` + 20 `compare_to_baseline`** 추가 — light/빠름, 브리프 §[Signal status] 의 정량 source. `plan_1.3.5` 도착 시 `SHALLOW_TOOL_NAMES` registry constant 확장.
 
 - [x] **[Priority: High]** Deep-mode node 구현 (event-triggered). (2026-05-16, placeholder LLM 사용 — plan_1.6 도착 시 vLLM 대체)
   - 입력: `AgentState`, full tool registry, Heavy LLM
-  - 출력: `vitalagent/nodes/deep_brief.py` — tool suite 전체 실행 (현재 16; `plan_1.3.5` 합류 시 21), Heavy LLM 호출, 9-section 한글 브리프 생성
+  - 출력: `opsight/nodes/deep_brief.py` — tool suite 전체 실행 (현재 16; `plan_1.3.5` 합류 시 21), Heavy LLM 호출, 9-section 한글 브리프 생성
   - 의존성: `plan_1.6` Heavy prompt v1, `plan_1.7` tool registry
   - 참고: latency 목표 < 60초로 측정. Heavy LLM 미배포 상태이면 mock으로 대체.
   - **Follow-up (ADR-016 Signal Access)**: Deep tool set 을 21-tool 로 확장. `_deep_args` 에 17–21 호출 인자 추가. 브리프 §[Surgery context]/§[Signal status]/§[Evidence] 의 정량 claim 이 17–21 출력으로 grounded 됨. `plan_1.3.5` 도착 시 `_deep_args` patch.
 
 - [x] **[Priority: High]** **rule-based** deep-mode trigger engine 구현 (7개 trigger + 60초 cooldown). (2026-05-16, 19 unit test 통과)
   - 입력: brief §6.3 trigger
-  - 출력: `vitalagent/triggers.py` — pure function `should_escalate(state) → (bool, reason)`. **LLM 사용 절대 금지** (brief §13.3).
+  - 출력: `opsight/triggers.py` — pure function `should_escalate(state) → (bool, reason)`. **LLM 사용 절대 금지** (brief §13.3).
   - 의존성: shallow loop output schema
   - 참고: 각 trigger를 unit test로 (negative + positive case).
 
 - [x] **[Priority: High]** StateGraph wiring. (2026-05-16, `build_graph()` 작동)
   - 입력: 위 모든 node + trigger
-  - 출력: `vitalagent/graph.py` — `build_graph() → CompiledGraph`. Edge: `shallow_loop → (trigger?) → deep_brief → shallow_loop`
+  - 출력: `opsight/graph.py` — `build_graph() → CompiledGraph`. Edge: `shallow_loop → (trigger?) → deep_brief → shallow_loop`
   - 의존성: 위
   - 참고: trace logging은 LangSmith 또는 local JSONL 결정 필요. 일단 local JSONL.
 
@@ -61,7 +61,7 @@
   - 의존성: 위 + `plan_1.6.5`
   - 참고: 본 test가 Stage 1 done의 "Mock FM Tier 1 + Tier 2가 end-to-end agent loop를 구동" criterion (`master_plan.md §5`) 충족의 근거다.
 
-- [x] **[Priority: Medium]** Trace 영속화 (persistence) + viewer note. (2026-05-16, `vitalagent/trace.py` + `docs/trace_format.md`)
+- [x] **[Priority: Medium]** Trace 영속화 (persistence) + viewer note. (2026-05-16, `opsight/trace.py` + `docs/trace_format.md`)
   - 입력: trace JSONL
   - 출력: `docs/trace_format.md` + 최소 trace dump tool
   - 의존성: graph 동작
@@ -71,12 +71,12 @@
 
 ## Definition of done
 
-- `vitalagent/graph.py::build_graph()`가 동작하는 graph를 반환
+- `opsight/graph.py::build_graph()`가 동작하는 graph를 반환
 - 단일 코호트 case에 대해 smoke test 통과 (Mock FM Tier 1)
 - 100-case integration test가 **Mock FM Tier 2**에 대해 shallow latency budget 안에서 통과
 - Shallow loop tick = 30초 측정. 최소 1개 rule이 deep brief를 trigger
 - Trace JSONL 캡처됨
-- FM은 `BiosignalFMInterface`를 통해서만 소비된다 (`vitalagent/nodes/`와 `vitalagent/graph.py`에 concrete-class import 없음 — static check로 검증)
+- FM은 `BiosignalFMInterface`를 통해서만 소비된다 (`opsight/nodes/`와 `opsight/graph.py`에 concrete-class import 없음 — static check로 검증)
 
 ## Data contracts established here
 

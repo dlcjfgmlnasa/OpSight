@@ -18,10 +18,10 @@ import numpy as np
 import pytest
 import torch
 
-from vitalagent.sim_clock import SimClock
-from vitalagent.tools.envelope import ToolRequest
-from vitalagent.tools.registry import TOOLS, call_tool
-from vitalagent.tools.signal_access_tools import (
+from opsight.sim_clock import SimClock
+from opsight.tools.envelope import ToolRequest
+from opsight.tools.registry import TOOLS, call_tool
+from opsight.tools.signal_access_tools import (
     USE_NEUROKIT,
     tool_assess_variability,
     tool_compare_to_baseline,

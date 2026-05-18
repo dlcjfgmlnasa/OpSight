@@ -18,9 +18,9 @@ import numpy as np
 import pytest
 import torch
 
-from vitalagent.fm.factory import create_fm
-from vitalagent.fm.interface import BiosignalFMInterface
-from vitalagent.fm.mock_light_ml import LightMLBiosignalFM
+from opsight.fm.factory import create_fm
+from opsight.fm.interface import BiosignalFMInterface
+from opsight.fm.mock_light_ml import LightMLBiosignalFM
 
 
 # ── Synthetic signal fixture / 합성 signal fixture ──
@@ -137,11 +137,11 @@ def test_checkpoint_path_not_found_raises() -> None:
 def test_checkpoint_roundtrip_via_logreg(tmp_path: Path) -> None:
     # Train a logreg baseline, save, then load via LightMLBiosignalFM.
     # logreg baseline 학습 + 저장 후 LightMLBiosignalFM 으로 load.
-    from vitalagent.baselines.features import (
+    from opsight.baselines.features import (
         ABP_FEATURE_NAMES,
         extract_abp_features,
     )
-    from vitalagent.baselines.logreg_abp import LogRegABPBaseline
+    from opsight.baselines.logreg_abp import LogRegABPBaseline
 
     # Synthetic dataset
     rng = np.random.default_rng(0)

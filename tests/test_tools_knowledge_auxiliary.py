@@ -10,17 +10,17 @@ import math
 
 import pytest
 
-from vitalagent.sim_clock import SimClock
-from vitalagent.tools.auxiliary_tools import (
+from opsight.sim_clock import SimClock
+from opsight.tools.auxiliary_tools import (
     tool_quality_aware_synthesis,
     tool_surgery_context_awareness,
 )
-from vitalagent.tools.envelope import ToolRequest
-from vitalagent.tools.knowledge_tools_stub import (
+from opsight.tools.envelope import ToolRequest
+from opsight.tools.knowledge_tools_stub import (
     tool_find_similar_cases,
     tool_intervention_response_prediction,
 )
-from vitalagent.tools.registry import TOOLS, call_tool
+from opsight.tools.registry import TOOLS, call_tool
 
 
 # ── Fixtures / Fixture ──

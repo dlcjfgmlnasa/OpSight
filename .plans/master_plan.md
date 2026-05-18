@@ -1,4 +1,4 @@
-# VitalAgent — Master Plan
+# OpSight — Master Plan
 
 > 5개 stage 전체에 걸친 프로젝트 방향의 **단일 진실 원천 (Single Source of Truth, SoT)**.
 > 본 파일은 `project-planner` agent만 편집한다. 다른 agent는 각자에게 할당된

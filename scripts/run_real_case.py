@@ -40,12 +40,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from vitalagent.fm.factory import create_fm
-from vitalagent.graph import build_graph
-from vitalagent.preprocessing import preprocess_signal_dict
-from vitalagent.sim_clock import SimClock
-from vitalagent.state import AgentState
-from vitalagent.trace import TraceWriter
+from opsight.fm.factory import create_fm
+from opsight.graph import build_graph
+from opsight.preprocessing import preprocess_signal_dict
+from opsight.signal_stream import stream_from_full_signal
+from opsight.sim_clock import SimClock
+from opsight.state import AgentState
+from opsight.trace import TraceWriter
 
 
 # ── Track selection — VitalDB priority subset (catalog §3.1) ──
@@ -61,8 +62,8 @@ DEFAULT_TRACKS = [
     "BIS/BIS",                 # → BIS (if available)
 ]
 
-# VitalDB track name → vitalagent signal dict key (modality alias)
-# vitalagent/fm/mock_rule_based.py::_*_ALIASES 와 일치
+# VitalDB track name → opsight signal dict key (modality alias)
+# opsight/fm/mock_rule_based.py::_*_ALIASES 와 일치
 TRACK_TO_ALIAS = {
     "Solar8000/HR": "HR",
     "Solar8000/ART_MBP": "ABP",
@@ -176,11 +177,22 @@ def run_case(args: argparse.Namespace) -> dict:
         trace_id=f"real-{args.case_id}-{stamp}",
     )
 
+    # Streaming wiring (Sprint 6, Issue #2): graph sees signal up to clock.now_s only.
+    # Per-modality output rate after preprocessing (waveform → 100Hz, numerics → native).
+    # Preprocessing 후 modality 별 output rate (waveform→100Hz, numerics→native) 반영.
+    rates_for_stream: dict[str, float] = {}
+    if prep_report is not None:
+        for mod, rep in prep_report.per_modality.items():
+            rates_for_stream[mod] = float(rep["output_sampling_rate_hz"])
+    stream = stream_from_full_signal(
+        signal, sampling_rates_hz=rates_for_stream,
+        default_sampling_rate_hz=sr_hz,
+    )
     with TraceWriter(trace_path, trace_id=initial.trace_id, case_id=initial.case_id) as tw:
         graph = build_graph(
             fm=fm,
             clock=clock,
-            signal=signal,
+            signal_stream=stream,
             modalities=modalities,
             max_ticks=args.max_ticks,
             tick_sim_advance_s=args.tick_sim_advance_s,

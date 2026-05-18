@@ -112,7 +112,7 @@
 ### Schema contract 확정
 
 - Track 이름 (예: `SNUADC/ART`) — 정식 source 는 본 catalog. 모든 downstream 코드 / 문서가 그대로 사용.
-- Modality alias (예: ABP → ART / ART_MBP / EV1000_ART_MBP) — `vitalagent/fm/mock_rule_based.py::_ABP_ALIASES` 와 1:1 일치 (이미 정합)
+- Modality alias (예: ABP → ART / ART_MBP / EV1000_ART_MBP) — `opsight/fm/mock_rule_based.py::_ABP_ALIASES` 와 1:1 일치 (이미 정합)
 - Case metadata field 이름 — 본 catalog §6 가 정식 source (plan_1.3 의 real EMR tool 의 schema)
 
 [CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요] — §3 unit 정확성, §5 modality 가용성 해석, §6 downstream tool mapping, §8 brief §4 cross-check 권고

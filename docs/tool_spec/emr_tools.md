@@ -1,7 +1,7 @@
 # EMR-based Tools (8–12) — Spec (plan_1.7)
 
 > 5 개 EMR tool 의 정식 schema + LLM description + failure mode.
-> ⚠️ 현재 구현 (`vitalagent/tools/emr_tools_stub.py`) 은 **STUB**. fake data 반환.
+> ⚠️ 현재 구현 (`opsight/tools/emr_tools_stub.py`) 은 **STUB**. fake data 반환.
 > 실 EMR query 는 `plan_1.3` 에서 교체. 본 spec 의 schema 는 real 합류 후 그대로 적용.
 > Description tone: `prompts/v1_tool_description_style.md` 의 4-line skeleton 준수.
 

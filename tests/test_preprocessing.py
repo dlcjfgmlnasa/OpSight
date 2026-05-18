@@ -1,5 +1,5 @@
-"""Tests for vitalagent.preprocessing (Sprint 5 follow-up, real_case findings).
-vitalagent.preprocessing 테스트 (Sprint 5 follow-up, real_case findings).
+"""Tests for opsight.preprocessing (Sprint 5 follow-up, real_case findings).
+opsight.preprocessing 테스트 (Sprint 5 follow-up, real_case findings).
 
 Coverage:
 - SignalConfig registry + alias lookup
@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 import torch
 
-from vitalagent.preprocessing import (
+from opsight.preprocessing import (
     SIGNAL_CONFIGS,
     SignalConfig,
     clip_to_physiological,
@@ -207,8 +207,92 @@ def test_pipeline_clips_artifacts_in_signal_dict():
     assert report.per_modality["MAP"]["n_above_range"] == 1
     # 1-sample gap 은 max_nan_gap_s=2.0 × 1Hz = 2 samples 미만 → filled
     assert report.per_modality["MAP"]["n_nan_gap_filled"] == 2
+    # MAP 은 numeric (not waveform) — resampled=False
+    assert report.per_modality["MAP"]["resampled"] is False
     # 정상 sample 영향 없음
     assert cleaned_arr[0] == pytest.approx(80.0)
+
+
+# ── Waveform 100 Hz resample (BFM standard) ──
+
+
+def test_pipeline_waveform_resampled_to_100hz():
+    """ABP 는 waveform → BFM 표준 100 Hz 로 자동 resample.
+    BFM standard: all waveforms resample to uniform 100 Hz target.
+    """
+    # 500 Hz × 1초 = 500 sample ABP
+    sr_native = 500.0
+    n = int(sr_native * 1.0)
+    abp = (80.0 + np.random.default_rng(0).normal(0, 2, n)).astype(np.float32)
+    signal = {"ABP": torch.from_numpy(abp)}
+    cleaned, report = preprocess_signal_dict(signal, sampling_rate_hz=sr_native)
+
+    rep = report.per_modality["ABP"]
+    assert rep["is_waveform"] is True
+    assert rep["resampled"] is True
+    assert rep["source_sampling_rate_hz"] == 500.0
+    assert rep["output_sampling_rate_hz"] == 100.0
+    # 500 Hz → 100 Hz: 500 sample → 100 sample
+    assert rep["n_total_output"] == 100
+    assert cleaned["ABP"].numel() == 100
+
+
+def test_pipeline_numeric_not_resampled():
+    """HR / BIS / SpO2 같은 numeric 은 native rate 유지.
+    Numerics (HR / BIS / SpO2) keep native sampling rate.
+    """
+    hr_arr = np.full(60, 75.0, dtype=np.float32)  # 60 sample at 1Hz
+    signal = {"HR": torch.from_numpy(hr_arr)}
+    cleaned, report = preprocess_signal_dict(signal, sampling_rate_hz=1.0)
+    rep = report.per_modality["HR"]
+    assert rep["is_waveform"] is False
+    assert rep["resampled"] is False
+    assert rep["source_sampling_rate_hz"] == rep["output_sampling_rate_hz"] == 1.0
+    assert cleaned["HR"].numel() == 60
+
+
+def test_pipeline_resample_can_be_disabled():
+    abp = np.full(500, 80.0, dtype=np.float32)
+    signal = {"ABP": torch.from_numpy(abp)}
+    cleaned, report = preprocess_signal_dict(
+        signal, sampling_rate_hz=500.0,
+        resample_waveforms_to_target=False,
+    )
+    rep = report.per_modality["ABP"]
+    assert rep["resampled"] is False
+    # 500 Hz 유지 — 500 sample 그대로
+    assert cleaned["ABP"].numel() == 500
+
+
+def test_pipeline_eeg_128hz_to_100hz():
+    """EEG (BIS/EEG1_WAV) 는 128 Hz → 100 Hz downsample.
+    EEG (BIS/EEG1_WAV) at 128 Hz → resample to 100 Hz.
+    """
+    sr_native = 128.0
+    n = int(sr_native * 2.0)  # 2 seconds
+    eeg = (np.random.default_rng(1).normal(0, 50, n)).astype(np.float32)
+    signal = {"BIS/EEG1_WAV": torch.from_numpy(eeg)}
+    cleaned, report = preprocess_signal_dict(signal, sampling_rate_hz=sr_native)
+    rep = report.per_modality["BIS/EEG1_WAV"]
+    assert rep["is_waveform"] is True
+    assert rep["resampled"] is True
+    # 128 Hz × 2s → 100 Hz × 2s = 200 samples
+    assert rep["n_total_output"] == 200
+
+
+def test_pipeline_co2_waveform_62_5hz_to_100hz():
+    """Primus/CO2 (capnography waveform) 62.5 Hz → 100 Hz upsample.
+    """
+    sr_native = 62.5
+    n = int(sr_native * 4.0)  # 4 seconds = 250 sample
+    co2 = np.full(n, 35.0, dtype=np.float32)
+    signal = {"Primus/CO2": torch.from_numpy(co2)}
+    cleaned, report = preprocess_signal_dict(signal, sampling_rate_hz=sr_native)
+    rep = report.per_modality["Primus/CO2"]
+    assert rep["is_waveform"] is True
+    assert rep["resampled"] is True
+    # 62.5 × 4 → 100 × 4 = 400 samples
+    assert rep["n_total_output"] == 400
 
 
 def test_pipeline_skips_unknown_modality():

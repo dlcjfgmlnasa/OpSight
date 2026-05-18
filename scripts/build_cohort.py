@@ -26,6 +26,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 
@@ -44,7 +45,7 @@ TRKS_URL = "https://api.vitaldb.net/trks"
 OP_TIME_MIN_SEC = 30 * 60  # 30 min
 
 # Modality alias for cohort manifest abp_* columns
-# Mirror of `vitalagent/fm/mock_rule_based.py::_ABP_ALIASES`.
+# Mirror of `opsight/fm/mock_rule_based.py::_ABP_ALIASES`.
 _ABP_INVASIVE_TRACKS = {"SNUADC/ART"}
 _ABP_PRIMARY_EXTRA = {"Solar8000/ART_MBP"}
 _ABP_EXTENDED_EXTRA = {"EV1000/ART_MBP", "Solar8000/FEM_MBP"}
@@ -245,9 +246,91 @@ def compute_modality_stats(
 # ── Markdown writer / Markdown writer ──
 
 
+def compute_artifact_stats(
+    manifest: pd.DataFrame, max_cases: int = 50,
+) -> pd.DataFrame:
+    """Sample artifact rate per modality for the first ``max_cases`` cases.
+    첫 ``max_cases`` case 에 대한 modality 별 artifact 비율.
+
+    `[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]` — physiological range 임계.
+
+    Loads each case via vitaldb at interval=1.0s; counts samples outside the
+    physiological range defined in opsight.preprocessing.SIGNAL_CONFIGS
+    + counts NaN ratio. Network-dependent (graceful skip on error).
+
+    Args:
+        manifest: cohort manifest DataFrame.
+        max_cases: sample size cap (network cost).
+    """
+    import sys as _sys
+    repo_root = Path(__file__).resolve().parents[1]
+    if str(repo_root) not in _sys.path:
+        _sys.path.insert(0, str(repo_root))
+    try:
+        import vitaldb as _vdb
+        from opsight.preprocessing.signal_config import config_for_modality
+    except Exception as exc:
+        print(f"  [artifact-stats] skip (import failed): {exc}")
+        return pd.DataFrame()
+
+    TRACKS = {
+        "Solar8000/HR": "HR",
+        "Solar8000/ART_MBP": "ABP",  # MAP config used via alias
+        "Solar8000/NIBP_MBP": "Solar8000/NIBP_MBP",
+        "Solar8000/PLETH_SPO2": "SpO2",
+        "Solar8000/ETCO2": "EtCO2",
+        "BIS/BIS": "BIS",
+    }
+    sample_ids = manifest["case_id"].head(max_cases).tolist()
+    stats: dict[str, dict[str, list[float]]] = {
+        alias: {"nan_ratio": [], "out_of_range_ratio": []} for alias in TRACKS.values()
+    }
+    n_processed = 0
+    for cid in sample_ids:
+        try:
+            vf = _vdb.VitalFile(int(cid), track_names=list(TRACKS))
+            df = vf.to_pandas(list(TRACKS), interval=1.0)
+        except Exception:
+            continue
+        n_processed += 1
+        for col in df.columns:
+            arr = df[col].to_numpy(dtype=np.float64)
+            alias = TRACKS.get(col, col)
+            nan_ratio = float(np.mean(np.isnan(arr)))
+            cfg = config_for_modality(alias)
+            if cfg is None:
+                continue
+            valid = arr[~np.isnan(arr)]
+            if len(valid) == 0:
+                oor_ratio = 0.0
+            else:
+                oor = (valid < cfg.physiological_min) | (valid > cfg.physiological_max)
+                oor_ratio = float(np.mean(oor))
+            stats[alias]["nan_ratio"].append(nan_ratio)
+            stats[alias]["out_of_range_ratio"].append(oor_ratio)
+
+    rows: list[dict[str, Any]] = []
+    for alias, m in stats.items():
+        if not m["nan_ratio"]:
+            continue
+        rows.append({
+            "modality": alias,
+            "n_cases_sampled": len(m["nan_ratio"]),
+            "nan_ratio_mean": float(np.mean(m["nan_ratio"])),
+            "nan_ratio_p50": float(np.median(m["nan_ratio"])),
+            "nan_ratio_p95": float(np.percentile(m["nan_ratio"], 95)),
+            "out_of_range_ratio_mean": float(np.mean(m["out_of_range_ratio"])),
+            "out_of_range_ratio_p95": float(np.percentile(m["out_of_range_ratio"], 95)),
+            "out_of_range_ratio_max": float(np.max(m["out_of_range_ratio"])),
+        })
+    print(f"  [artifact-stats] processed {n_processed}/{len(sample_ids)} cases")
+    return pd.DataFrame(rows)
+
+
 def write_cohort_stats_md(
     manifest: pd.DataFrame, modality_stats: pd.DataFrame, exclusions: pd.DataFrame,
     *, exclude_pediatric: bool, exclude_asa6: bool,
+    artifact_stats: pd.DataFrame | None = None,
 ) -> None:
     """Write `docs/cohort_stats.md`.
     `docs/cohort_stats.md` 작성.
@@ -340,6 +423,36 @@ def write_cohort_stats_md(
     lines.append("- `surgery_type == 'other'` 비율 — VitalDB `department` 가 4 표준 외 값을 가지면 발생. 본 dataset (2026-05-16 snapshot) 은 4 department 만.")
     lines.append("")
     lines.append("[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요] — surgery_type 분포의 임상적 타당성, ABP 가용성 편차 해석.")
+
+    # ── Artifact stats (Sprint 6 Task D) ──
+    if artifact_stats is not None and len(artifact_stats) > 0:
+        lines.append("")
+        lines.append("## 5. Modality 별 artifact / NaN ratio (Sprint 6 추가)")
+        lines.append("")
+        lines.append(f"> 첫 {int(artifact_stats['n_cases_sampled'].max())} case sample 기반. "
+                     "Physiological range 임계는 `opsight/preprocessing/signal_config.py` 의 `SIGNAL_CONFIGS`.")
+        lines.append("> `out_of_range_ratio` = valid sample 중 physiological_min/max 범위 밖 비율.")
+        lines.append("> `[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]` — range 임계의 임상 적절성.")
+        lines.append("")
+        lines.append("| modality | n_cases | nan_ratio mean | nan p95 | OOR ratio mean | OOR p95 | OOR max |")
+        lines.append("|----------|---------|----------------|---------|----------------|---------|---------|")
+        for _, r in artifact_stats.iterrows():
+            lines.append(
+                f"| `{r['modality']}` | {int(r['n_cases_sampled'])} | "
+                f"{r['nan_ratio_mean']:.1%} | {r['nan_ratio_p95']:.1%} | "
+                f"{r['out_of_range_ratio_mean']:.2%} | {r['out_of_range_ratio_p95']:.2%} | "
+                f"{r['out_of_range_ratio_max']:.2%} |"
+            )
+        lines.append("")
+        lines.append("### 해석 hint")
+        lines.append("")
+        lines.append("- **NaN ratio 가 50%+ 인 modality** (HR / ABP / SpO2 등) — Solar8000 native rate (~0.5Hz) "
+                     "가 1Hz resample 와 mismatch. 정상.")
+        lines.append("- **NaN ratio 가 95%+** (NIBP) — cuff 측정 주기 (~5분 1회). 정상.")
+        lines.append("- **OOR (out-of-range) 비율 > 1%** — sensor artifact 비율 추정. preprocessing 의 "
+                     "`clip_to_physiological` 가 자동 처리.")
+        lines.append("- **OOR max** 가 큰 case — *문제 case*. cohort filtering 또는 manual review 후보.")
+
     COHORT_STATS_PATH.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -354,6 +467,9 @@ def main() -> None:
                     help="age < 18 case 제외 (default: include — brief §4.1)")
     ap.add_argument("--exclude-asa6", action="store_true",
                     help="ASA = 6 case 제외 (default: include)")
+    ap.add_argument("--artifact-stats-cases", type=int, default=0,
+                    help="N>0 시 첫 N case sample 로 modality 별 artifact/NaN 비율 계산 + "
+                         "cohort_stats.md 에 추가 (network 의존). 기본 0 (skip).")
     args = ap.parse_args()
 
     DATA_COHORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -382,11 +498,17 @@ def main() -> None:
     print("[4/5] Computing modality stats ...")
     modality_stats = compute_modality_stats(manifest, trks)
 
+    artifact_stats: pd.DataFrame | None = None
+    if args.artifact_stats_cases > 0:
+        print(f"[4b/5] Computing artifact stats (sample {args.artifact_stats_cases} cases) ...")
+        artifact_stats = compute_artifact_stats(manifest, max_cases=args.artifact_stats_cases)
+
     print("[5/5] Writing docs/cohort_stats.md ...")
     write_cohort_stats_md(
         manifest, modality_stats, exclusions,
         exclude_pediatric=args.exclude_pediatric,
         exclude_asa6=args.exclude_asa6,
+        artifact_stats=artifact_stats,
     )
     print(f"  → {COHORT_STATS_PATH}")
     print("")

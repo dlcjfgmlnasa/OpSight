@@ -487,7 +487,7 @@ CO2 (Primus)  100%      100%      98%         99%       100%
 | 약속 (contract) | 위치 |
 |----------------|------|
 | Track 이름 (예: `SNUADC/ART`) | plan_1.3 (EMR tool), plan_1.4 (baselines), plan_1.5 (surgery context), plan_1.7 (tool spec) 의 직접 input |
-| Modality alias (예: `ABP` → `SNUADC/ART` / `Solar8000/ART_MBP` / `EV1000/ART_MBP`) | `vitalagent/fm/mock_rule_based.py::_ABP_ALIASES` 와 일치 |
+| Modality alias (예: `ABP` → `SNUADC/ART` / `Solar8000/ART_MBP` / `EV1000/ART_MBP`) | `opsight/fm/mock_rule_based.py::_ABP_ALIASES` 와 일치 |
 | Case metadata field 이름 | plan_1.3 (real EMR tool) 의 정식 schema |
 
 → Track 이름 / metadata field 이름은 **본 catalog 가 정식 source**. 모든 코드 / 문서 가 본 이름을 그대로 사용.

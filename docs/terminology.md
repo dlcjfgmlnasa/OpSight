@@ -1,6 +1,6 @@
-# VitalAgent — 용어집 (Terminology)
+# OpSight — 용어집 (Terminology)
 
-> 본 문서는 VitalAgent 프로젝트의 모든 markdown 문서를 한글로 변환할 때
+> 본 문서는 OpSight 프로젝트의 모든 markdown 문서를 한글로 변환할 때
 > 적용하는 **유일한 ground truth**다. 변환 시 의문이 생기면 본 파일을
 > 우선 참조한다. 본 파일은 한글 변환 작업이 시작되기 *전에* 합의되어야
 > 하며, 작업 중 누락된 용어는 발견 즉시 본 파일에 추가한다.
@@ -14,7 +14,7 @@
 본 원칙은 사용자의 지시 8개 항목을 정리·고정한 것이다.
 
 1. **기술 용어는 영문 유지**. 예: `LangGraph`, `Foundation Model`, `ReAct`, `API`, `tool`, `agent`, `Protocol`, `Pydantic`, `factory`, `runtime_checkable`.
-2. **코드 식별자(파일명/변수/함수/경로)는 영문 유지**. 예: `BiosignalFMInterface`, `predict_hypotension`, `vitalagent/fm/interface.py`.
+2. **코드 식별자(파일명/변수/함수/경로)는 영문 유지**. 예: `BiosignalFMInterface`, `predict_hypotension`, `opsight/fm/interface.py`.
 3. **일반 설명문은 한글로 작성**. 직역이 어색하면 의역 가능, 단 원 의미를 손상시키지 않는다.
 4. **Section 헤더는 한글 + 영문 병기 허용**. 패턴은 §8 참조.
 5. **임상 용어는 한글 + 영문 병기**. 예: "저혈압 (hypotension)". 본 표(§5)에 정의된 표기로 통일.
@@ -44,8 +44,8 @@
 
 | 분류 | 예시 |
 |------|------|
-| 변수명 / 함수명 / 클래스명 / 모듈명 | `BiosignalFMInterface`, `predict_hypotension`, `StubBiosignalFM`, `create_fm`, `vitalagent.tools.registry`, `AgentState` |
-| 파일 경로 / 디렉토리명 | `docs/project_brief.md`, `.plans/stage1_preparation/plan_1.1.5_mock_fm_stub.md`, `vitalagent/fm/interface.py`, `docs/notebooks/_cache/cases.csv`, `configs/fm/default.yaml` |
+| 변수명 / 함수명 / 클래스명 / 모듈명 | `BiosignalFMInterface`, `predict_hypotension`, `StubBiosignalFM`, `create_fm`, `opsight.tools.registry`, `AgentState` |
+| 파일 경로 / 디렉토리명 | `docs/project_brief.md`, `.plans/stage1_preparation/plan_1.1.5_mock_fm_stub.md`, `opsight/fm/interface.py`, `docs/notebooks/_cache/cases.csv`, `configs/fm/default.yaml` |
 | Git / CLI 명령어 | `git status`, `pytest`, `python -m`, `pip install`, `.\.venv\Scripts\python.exe` |
 | YAML / JSON 키, 환경변수 | `fm.implementation`, `case_id`, `sim_time_s`, `latency_sim_sec`, `noise_pct`, `$env:VITALDB_TOKEN` |
 | Python 키워드 / 데코레이터 | `def`, `class`, `async`, `await`, `@runtime_checkable`, `@dataclass`, `from … import …` |
@@ -407,14 +407,14 @@ VitalDB의 track 식별자는 grep 호환성과 코드 일치성을 위해 **어
 
 ### 6.7 Tagline 표기
 
-VitalAgent의 영문 tagline은 paper / venue 제출용 정체성 문구이므로 **영문 원문 유지**가 기본이다. 한글 변환 시 임팩트 손실 가능성이 높다.
+OpSight의 영문 tagline은 paper / venue 제출용 정체성 문구이므로 **영문 원문 유지**가 기본이다. 한글 변환 시 임팩트 손실 가능성이 높다.
 
 **표기 규칙**
 
 | 등장 시점 | 표기 |
 |-----------|------|
 | **문서 내 첫 등장** | 영문 tagline 원문 + **별도 한글 요약 1–2문장** 병기 |
-| 이후 등장 | 영문 tagline 단독 또는 `VitalAgent` 단독 |
+| 이후 등장 | 영문 tagline 단독 또는 `OpSight` 단독 |
 
 **영문 tagline (정식)**
 

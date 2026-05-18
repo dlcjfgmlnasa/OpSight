@@ -28,10 +28,10 @@ from typing import Callable
 
 import pytest
 
-from vitalagent.fm.interface import BiosignalFMInterface
-from vitalagent.fm.mock_light_ml import LightMLBiosignalFM
-from vitalagent.fm.mock_rule_based import RuleBasedBiosignalFM
-from vitalagent.fm.mock_stub import StubBiosignalFM
+from opsight.fm.interface import BiosignalFMInterface
+from opsight.fm.mock_light_ml import LightMLBiosignalFM
+from opsight.fm.mock_rule_based import RuleBasedBiosignalFM
+from opsight.fm.mock_stub import StubBiosignalFM
 
 
 # ── Registry of FM implementations / FM 구현체 등록 ──

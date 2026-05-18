@@ -1,8 +1,8 @@
-# Step 5 실행 계획 (Step 5 Execution Plan) — VitalAgent `.claude` 라인업 + Plan 구조 + Master Context
+# Step 5 실행 계획 (Step 5 Execution Plan) — OpSight `.claude` 라인업 + Plan 구조 + Master Context
 
 > 작성일: 2026-05-16
 > 입력: `docs/analysis/existing_agents.md`, `docs/analysis/agent_mapping.md`, 사용자 결정 사항 (2026-05-16)
-> 출력 대상: VitalAgent 프로젝트 루트 (`C:\Projects\VitalAgent\`)
+> 출력 대상: OpSight 프로젝트 루트 (`C:\Projects\OpSight\`)
 
 본 문서는 **무엇을 만들 것인지에 대한 계약서**다. confirm 후 본 계획 그대로 파일 생성에 들어간다.
 
@@ -23,7 +23,7 @@
 ## 1. 생성할 파일 목록 (File Inventory)
 
 ```
-VitalAgent/
+OpSight/
 ├── CLAUDE.md                                                 # NEW: short entrypoint
 ├── docs/
 │   └── project_brief.md                                      # NEW: master context (11 항목)
@@ -169,7 +169,7 @@ Sub-plans (TBD when stage approaches): ...
 
 ### 4.1 `project-planner.md` (MOD)
 - BFM 골격 그대로 + 다음 갱신:
-  - Project context를 VitalAgent (LangGraph, dual-mode, npj DM)로 교체
+  - Project context를 OpSight (LangGraph, dual-mode, npj DM)로 교체
   - Sub-agent roster 갱신: 6명 (signal-ingest / langgraph / prompt / clinical-eval / vitaldb-expert / paper-writer)
   - Plan 파일 경로 갱신: `.plans/master_plan.md` + `.plans/stage{1..5}_*/plan_*.md`
   - 데이터 컨트랙트 항목 확장: **(a) Tool I/O schema, (b) LangGraph state shape, (c) LLM context budget (tokens), (d) VitalDB API call signature** — tensor shape는 부수 항목으로 강등
@@ -320,7 +320,7 @@ any agent in this repo.
 
 | 검증 | 방법 |
 |------|------|
-| 모든 agent의 memory path가 `C:\Projects\VitalAgent\.claude\agent-memory\<agent>\`로 통일됨 | `grep agent-memory` in `.claude/agents/*.md` |
+| 모든 agent의 memory path가 `C:\Projects\OpSight\.claude\agent-memory\<agent>\`로 통일됨 | `grep agent-memory` in `.claude/agents/*.md` |
 | 모든 plan 파일이 owner agent와 매핑 일치 | `master_plan.md`의 매핑 표 ↔ 각 plan 파일의 `Owner:` 헤더 |
 | 모든 agent의 `description` trigger에 한글 예시 ≥ 1개 포함 | grep `한국어` 또는 첫 example이 ko text |
 | `docs/project_brief.md`의 TODO 마커 개수 = 사용자에게 전달할 fill-in 개수 | `grep <!-- TODO` |

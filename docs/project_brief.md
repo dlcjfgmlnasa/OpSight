@@ -1,4 +1,4 @@
-# VitalAgent — Project Brief (Master Context)
+# OpSight — Project Brief (Master Context)
 
 > 프로젝트 정체성, 범위, 설계 결정에 대한 **단일 진실 원천 (Single Source of Truth, SoT)**.
 > `.claude/agents/*.md`와 `.plans/*.md`는 모두 본 파일을 참조한다. 본 brief가 변경되면
@@ -10,9 +10,9 @@
 
 ## 1. 프로젝트 정체성 (Project Identity)
 
-- **이름**: VitalAgent
+- **이름**: OpSight
 - **Tagline**: *A universal, modality-agnostic, quality-aware LLM agent for real-time intraoperative hemodynamic reasoning, powered by a cross-domain pretrained multimodal biosignal foundation model.*
-- **작업 디렉토리**: `C:\Projects\VitalAgent\`
+- **작업 디렉토리**: `C:\Projects\OpSight\`
 - **목표 venue**: npj Digital Medicine
 - **제출 목표 시점**: Month 10 (≈ 2026 Q4 — 정확한 날짜 TBD)
 
@@ -36,7 +36,7 @@
 - surgery-aware 아님
 - 시간 압박 하의 임상의 (clinician)에게 해석 불가능
 
-VitalAgent의 가설: multimodal biosignal Foundation Model 위에 놓인 **tool-using LLM agent**는 근거에 충실하고 자신의 한계에 정직한, **interpretable·quality-aware·surgery-aware**한 술중 (intraoperative) 추론을 제공할 수 있다.
+OpSight의 가설: multimodal biosignal Foundation Model 위에 놓인 **tool-using LLM agent**는 근거에 충실하고 자신의 한계에 정직한, **interpretable·quality-aware·surgery-aware**한 술중 (intraoperative) 추론을 제공할 수 있다.
 
 <!-- TODO: expand clinical motivation with citations once paper outline starts -->
 
@@ -44,7 +44,7 @@ VitalAgent의 가설: multimodal biosignal Foundation Model 위에 놓인 **tool
 
 ## 3. Foundation Model 맥락 (Foundation Model Context — separate ongoing project)
 
-FM은 별도 프로젝트 `C:\Projects\Biosignal-Foundation-Model\`에서 개발 중이다. VitalAgent는 FM을 가중치 동결된 (frozen) tool backend로 **소비**할 뿐, FM 학습 코드는 수정하지 않는다.
+FM은 별도 프로젝트 `C:\Projects\Biosignal-Foundation-Model\`에서 개발 중이다. OpSight는 FM을 가중치 동결된 (frozen) tool backend로 **소비**할 뿐, FM 학습 코드는 수정하지 않는다.
 
 - **Pretraining 데이터**: K-MIMIC ICU (SNUH)
 - **모달리티**: ECG, ABP, PPG, CVP, PAP, ICP (6 신호)
@@ -55,7 +55,7 @@ FM은 별도 프로젝트 `C:\Projects\Biosignal-Foundation-Model\`에서 개발
 - **Cross-modal pairs**:
   - Tier 1: ECG↔ABP, ECG↔PPG, ABP↔PPG
   - Tier 2: CVP↔PAP, ABP↔ICP, ABP↔PAP
-- **상태**: 학습 진행 중, 약 2개월 후 완료 예정 → 그 사이에 VitalAgent를 멈추지 않기 위해 **§3.5 Mock FM Strategy** 채택
+- **상태**: 학습 진행 중, 약 2개월 후 완료 예정 → 그 사이에 OpSight를 멈추지 않기 위해 **§3.5 Mock FM Strategy** 채택
 - **13 downstream tasks** (병행 학습 중; Stage 2에서 통합):
 
 | # | Task | 확정 여부 |
@@ -75,7 +75,7 @@ FM은 별도 프로젝트 `C:\Projects\Biosignal-Foundation-Model\`에서 개발
 
 ## 3.5. Mock FM 전략 (Mock FM Strategy)
 
-실제 FM은 Stage 1 (약 2개월) 전체를 학습에 사용한다. agent system 작업이 멈추는 것을 막기 위해 VitalAgent는 안정적인 Interface Protocol 뒤에서 **3-tier mock**으로 개발하고, Stage 2 시작 시점에 real FM으로 교체한다.
+실제 FM은 Stage 1 (약 2개월) 전체를 학습에 사용한다. agent system 작업이 멈추는 것을 막기 위해 OpSight는 안정적인 Interface Protocol 뒤에서 **3-tier mock**으로 개발하고, Stage 2 시작 시점에 real FM으로 교체한다.
 
 | Tier | 이름 | 시점 | 목적 |
 |------|------|------|------|
@@ -83,7 +83,7 @@ FM은 별도 프로젝트 `C:\Projects\Biosignal-Foundation-Model\`에서 개발
 | 2 | Rule-based mock | Week 4 | plausible I/O로 agent reasoning 검증 |
 | 3 | Light ML mock *(optional)* | Week 6 | Stage 1.4 baselines를 wrapping한 real-FM proxy |
 
-**Interface Protocol** (`vitalagent/fm/interface.py`):
+**Interface Protocol** (`opsight/fm/interface.py`):
 `runtime_checkable` `BiosignalFMInterface`, 8개 메서드 (`encode`, `predict_hypotension`, `predict_cardiac_arrest`, `assess_signal_quality`, `cross_modal_consistency`, `temporal_trend`, `forecast_signal`, `anomaly_score`). Result dataclass는 모든 tier와 real FM이 공유한다.
 
 **Swap 메커니즘**: `configs/fm/default.yaml`의 `fm.implementation ∈ {mock_stub, mock_rule_based, mock_light_ml, real}` 필드. agent code는 Protocol에만 의존하므로 swap은 config 변경만으로 완료된다.

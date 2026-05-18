@@ -13,7 +13,7 @@
 
 - [x] **[Priority: High]** `RuleBasedBiosignalFM` scaffold + Protocol compliance.
   - 입력: `plan_1.2.5` Protocol, `plan_1.1.5` result type
-  - 출력: `vitalagent/fm/mock_rule_based.py` — 8개 method가 stub된 class skeleton. `tests/test_fm_protocol_compliance.py` 통과.
+  - 출력: `opsight/fm/mock_rule_based.py` — 8개 method가 stub된 class skeleton. `tests/test_fm_protocol_compliance.py` 통과.
   - 의존성: `plan_1.2.5`
   - 참고: numpy / scipy 기반 (PyTorch는 input 변환에만).
 
@@ -81,7 +81,7 @@
 
 ## Definition of done
 
-- `vitalagent/fm/mock_rule_based.py`가 8개 method 모두 구현 + Protocol-compliant
+- `opsight/fm/mock_rule_based.py`가 8개 method 모두 구현 + Protocol-compliant
 - 8개 rule unit test + 1개 smoke test 통과
 - `configs/fm/mock_rule_based.yaml`이 threshold + noise injection 필드로 채워짐
 - Clinical-evaluator review note 추가됨 (`[CLINICIAN-REVIEW]` marker 유지)

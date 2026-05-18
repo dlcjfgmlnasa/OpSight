@@ -59,7 +59,7 @@
 
 - `docs/surgery_context.yaml` v1 — 4 surgery_types (`department` frozen) + 11 optype_subcategories + 3 phases (induction/maintenance/emergence) + 12 hint cell (4×3) + consumers map
 - `docs/surgery_context_coverage.md` — 100% named category coverage (DoD ≥ 80% 충족)
-- `vitalagent/tools/auxiliary_tools.py` — Tool 15 STUB → yaml-backed 교체 (graceful fallback 유지)
+- `opsight/tools/auxiliary_tools.py` — Tool 15 STUB → yaml-backed 교체 (graceful fallback 유지)
 - 2 신규 test (yaml load 검증 + 4×3 cell 전수 검증)
 
 ### 핵심 정책
@@ -71,8 +71,8 @@
 
 ### Consumers map (downstream 회귀 방지)
 
-- `vitalagent/tools/auxiliary_tools.py::tool_surgery_context_awareness` — Tool 15 (현재 활성)
+- `opsight/tools/auxiliary_tools.py::tool_surgery_context_awareness` — Tool 15 (현재 활성)
 - `prompts/v1_heavy_deep_brief.md` (v2 follow-up) — §[Surgery context] section
-- `vitalagent/baselines/labels.py + features.py` — phase boundary 휴리스틱 활용 가능
+- `opsight/baselines/labels.py + features.py` — phase boundary 휴리스틱 활용 가능
 
 [CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요] — 12 hint cell 의 임상적 적절성 + phase boundary 휴리스틱 + optype subcategory 매핑.

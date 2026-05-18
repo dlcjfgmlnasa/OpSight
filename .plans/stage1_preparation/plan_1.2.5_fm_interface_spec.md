@@ -13,7 +13,7 @@
 
 - [x] **[Priority: High]** `BiosignalFMInterface` Protocol 정의. (2026-05-16 완료)
   - 입력: ADR-011 method 목록 / signature, `plan_1.1.5` result type
-  - 출력: `vitalagent/fm/interface.py` — `runtime_checkable` `Protocol`. 8개 method를 정밀 typed (signal은 `dict[str, torch.Tensor]`, modality는 `list[str]` 등).
+  - 출력: `opsight/fm/interface.py` — `runtime_checkable` `Protocol`. 8개 method를 정밀 typed (signal은 `dict[str, torch.Tensor]`, modality는 `list[str]` 등).
   - 의존성: `plan_1.1.5` result type
   - 참고: Protocol 변경은 ADR-011 개정 필요 — module docstring에 명시.
   - **구현 결정 (sprint Step 2 / B1)**:
@@ -48,7 +48,7 @@
 
 - [x] **[Priority: High]** Factory 구현. (2026-05-16 완료)
   - 입력: ADR-011 §"Swap mechanism"
-  - 출력: `vitalagent/fm/factory.py` — `create_fm(config) -> BiosignalFMInterface`. `config.fm.implementation ∈ {mock_stub, mock_rule_based, mock_light_ml, real}`을 switch. 알 수 없는 값은 위반 문자열과 함께 `ValueError`를 raise.
+  - 출력: `opsight/fm/factory.py` — `create_fm(config) -> BiosignalFMInterface`. `config.fm.implementation ∈ {mock_stub, mock_rule_based, mock_light_ml, real}`을 switch. 알 수 없는 값은 위반 문자열과 함께 `ValueError`를 raise.
   - 의존성: Protocol ✅
   - 참고: `real`, `mock_rule_based`, `mock_light_ml`은 본 plan 시점에 미구현이다 — placeholder import + lazy load 패턴을 권장한다 (import-time crash 방지).
   - **구현 결정 (sprint Step 2 / B3)**:
@@ -123,7 +123,7 @@
 
 - [x] **[Priority: Medium]** Graceful-degradation hook 문서화. (2026-05-16 완료)
   - 입력: ADR-011 §"Real-FM migration protocol" step 5
-  - 출력: `vitalagent/fm/factory.py`에 `make_fallback(primary, fallback) -> BiosignalFMInterface` helper + 사용 예시 docstring
+  - 출력: `opsight/fm/factory.py`에 `make_fallback(primary, fallback) -> BiosignalFMInterface` helper + 사용 예시 docstring
   - 의존성: factory ✅
   - 참고: 실제 호출 site (LangGraph node)에서 wrap한다. 본 task는 helper와 docs까지.
   - **구현 결정 (sprint Step 2 / B5)**:

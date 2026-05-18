@@ -28,11 +28,11 @@ from pathlib import Path
 import pytest
 import torch
 
-from vitalagent.fm.mock_stub import StubBiosignalFM
-from vitalagent.graph import build_graph
-from vitalagent.sim_clock import SimClock
-from vitalagent.state import AgentState
-from vitalagent.trace import TraceWriter, read_trace
+from opsight.fm.mock_stub import StubBiosignalFM
+from opsight.graph import build_graph
+from opsight.sim_clock import SimClock
+from opsight.state import AgentState
+from opsight.trace import TraceWriter, read_trace
 
 
 # ── Fixtures ──
@@ -167,9 +167,9 @@ def test_smoke_no_leakage_within_graph_run(tmp_path: Path, signal, modalities) -
 
 
 def test_no_concrete_fm_import_in_node_or_graph_module() -> None:
-    """Static check: ``vitalagent/nodes/`` and ``vitalagent/graph.py`` must
+    """Static check: ``opsight/nodes/`` and ``opsight/graph.py`` must
     not import any concrete FM class. Only ``BiosignalFMInterface`` is allowed.
-    정적 검사: ``vitalagent/nodes/``와 ``vitalagent/graph.py``는 concrete FM
+    정적 검사: ``opsight/nodes/``와 ``opsight/graph.py``는 concrete FM
     class를 import하지 않는다. ``BiosignalFMInterface``만 허용.
     """
     forbidden_names = (
@@ -179,10 +179,10 @@ def test_no_concrete_fm_import_in_node_or_graph_module() -> None:
         "RealBiosignalFM",
     )
     targets = [
-        Path("vitalagent/nodes/__init__.py"),
-        Path("vitalagent/nodes/shallow_loop.py"),
-        Path("vitalagent/nodes/deep_brief.py"),
-        Path("vitalagent/graph.py"),
+        Path("opsight/nodes/__init__.py"),
+        Path("opsight/nodes/shallow_loop.py"),
+        Path("opsight/nodes/deep_brief.py"),
+        Path("opsight/graph.py"),
     ]
     root = Path(__file__).resolve().parents[2]
     for rel in targets:

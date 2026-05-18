@@ -120,12 +120,12 @@ hints:
 # ── Consumers (plan_1.5 task 5) ──
 # 본 YAML 의 어떤 key 가 어디서 소비되는가 — downstream 회귀 방지용.
 consumers:
-  - path: "vitalagent/tools/auxiliary_tools.py::tool_surgery_context_awareness"
+  - path: "opsight/tools/auxiliary_tools.py::tool_surgery_context_awareness"
     consumes: ["surgery_types", "phases", "hints"]
     note: "Tool 15 — 현재 hardcoded priors STUB. 본 YAML 합류 시 로드로 교체."
   - path: "prompts/v1_heavy_deep_brief.md (v2 follow-up)"
     consumes: ["surgery_types", "hints"]
     note: "Heavy LLM 의 §[Surgery context] section context."
-  - path: "vitalagent/baselines/labels.py + features.py"
+  - path: "opsight/baselines/labels.py + features.py"
     consumes: ["phases"]
     note: "Phase boundary 휴리스틱 — feature window 결정 시 사용 가능."

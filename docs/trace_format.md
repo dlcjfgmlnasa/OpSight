@@ -1,6 +1,6 @@
 # Trace JSONL Format (plan_1.8 task 9)
 
-> Append-only JSONL captured by `vitalagent/trace.py::TraceWriter`. Consumed by Stage 4 임상의 평가 workflow as `(brief, trace)` pairs.
+> Append-only JSONL captured by `opsight/trace.py::TraceWriter`. Consumed by Stage 4 임상의 평가 workflow as `(brief, trace)` pairs.
 > Spec: `docs/project_brief.md §10` (real-time framing) + plan_1.8 task 9.
 
 ---
@@ -93,7 +93,7 @@ Payload: `{"type": str, "message": str, "extra": dict}` — graph 또는 tool �
 ## 4. 사용 예 (Python)
 
 ```python
-from vitalagent.trace import TraceWriter, read_trace
+from opsight.trace import TraceWriter, read_trace
 
 with TraceWriter("logs/traces/run-001.jsonl",
                  trace_id="run-001",

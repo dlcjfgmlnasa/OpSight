@@ -1,4 +1,4 @@
-# ADR-012 — Surgery-Specific Downstream Tasks for VitalAgent
+# ADR-012 — Surgery-Specific Downstream Tasks for OpSight
 
 - **Status**: `[DECISION PENDING]` `[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]`
 - **Date proposed**: 2026-05-16
@@ -12,27 +12,27 @@
 
 본 논문의 Foundation Model (BFM)은 K-MIMIC ICU pretrained로, 13개 general downstream task에 대해 학습 중이다 (`docs/project_brief.md §3`). 이 task suite는 ICU monitoring 전반에 대한 일반성을 목표로 한다.
 
-VitalAgent는 OR (수술실, operating room) 환경에서 동작한다. OR은 ICU와 다음과 같이 distribution과 임상 question이 다르다.
+OpSight는 OR (수술실, operating room) 환경에서 동작한다. OR은 ICU와 다음과 같이 distribution과 임상 question이 다르다.
 
 - 마취 (anesthesia) 상태 — 약물 효과로 인한 신호 dynamics 변화
 - 명시적 시점 이벤트 (induction, incision, emergence) 존재
 - 임상의의 능동적 개입 (intervention) 빈도가 ICU보다 높음
 - 환자 baseline이 비교적 안정적 (vs ICU의 다중 합병증)
 
-일반 13 task만으로 OR-specific 평가를 수행하면 VitalAgent의 핵심 가치인 **surgery-aware**가 희석된다. 또한 paper의 contribution이 "FM downstream 활용 사례"에 머무를 위험이 있다.
+일반 13 task만으로 OR-specific 평가를 수행하면 OpSight의 핵심 가치인 **surgery-aware**가 희석된다. 또한 paper의 contribution이 "FM downstream 활용 사례"에 머무를 위험이 있다.
 
 ---
 
 ## Decision (제안 결정 — 미확정)
 
-FM downstream task suite와 VitalAgent task suite를 **분리**한다.
+FM downstream task suite와 OpSight task suite를 **분리**한다.
 
 | 구분 | task suite | 데이터 | 개수 |
 |------|-----------|--------|------|
 | 본 논문 FM (별도 프로젝트) | general ICU downstream | K-MIMIC ICU | 13 |
-| VitalAgent (본 PoC) | **OR-specific downstream** | VitalDB | **13** (4-tier) |
+| OpSight (본 PoC) | **OR-specific downstream** | VitalDB | **13** (4-tier) |
 
-### VitalAgent task suite — 13 tasks, 4 tier
+### OpSight task suite — 13 tasks, 4 tier
 
 #### Tier 1: Acute Event (5)
 
@@ -77,7 +77,7 @@ Tier 4 학습 방법론은 별도 ADR-013에서 결정된다.
 |-------------|------------------------------|
 | **(a) FM 13 task suite 그대로 reuse** | 단순함, 학습 비용 0. 그러나 OR specificity 손실. surgery-aware 차별점이 paper에 드러나지 않음. |
 | **(b) VitalDB에 1–2개 task만 추가** | 학습 비용 최소. 그러나 Tier 4 (intervention response) 차별점 부재. paper contribution 약화. |
-| **(c) (제안) FM general + VitalAgent OR-specific 13 task 분리** | 최대 차별점 + paper-worthy contribution. 학습 + 평가 비용 약 2배. |
+| **(c) (제안) FM general + OpSight OR-specific 13 task 분리** | 최대 차별점 + paper-worthy contribution. 학습 + 평가 비용 약 2배. |
 
 ---
 

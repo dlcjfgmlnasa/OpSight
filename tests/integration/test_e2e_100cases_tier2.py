@@ -28,12 +28,12 @@ import numpy as np
 import pytest
 import torch
 
-from vitalagent.fm.factory import create_fm
-from vitalagent.fm.interface import BiosignalFMInterface
-from vitalagent.graph import build_graph
-from vitalagent.sim_clock import SimClock
-from vitalagent.state import AgentState
-from vitalagent.trace import TraceWriter, read_trace
+from opsight.fm.factory import create_fm
+from opsight.fm.interface import BiosignalFMInterface
+from opsight.graph import build_graph
+from opsight.sim_clock import SimClock
+from opsight.state import AgentState
+from opsight.trace import TraceWriter, read_trace
 
 
 # ── Synthetic case generator / Synthetic case generator ──

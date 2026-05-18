@@ -44,7 +44,7 @@ mean = 82.2, std = 42.7, min = -9.0, max = 344.0
 
 **대응 권고**:
 1. Tool 17–20 에 **physiological clipping** 추가 — MAP ∈ [20, 250] mmHg 같은 plausible 범위 밖 sample 은 NaN 으로 mask
-2. 또는 별도 `sanitize_signal` preprocessor — `vitalagent/tools/signal_access_tools.py` 에 helper 추가
+2. 또는 별도 `sanitize_signal` preprocessor — `opsight/tools/signal_access_tools.py` 에 helper 추가
 3. plan_1.3.5 task 1 의 task 1 (env verification) 처럼 *cohort 사전 분석* 으로 artifact 비율 파악 필요
 4. `[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]` — physiological plausibility range 의 임상적 적절성
 
@@ -63,7 +63,7 @@ mean = 82.2, std = 42.7, min = -9.0, max = 344.0
 **대응 권고** (Stage 2 작업):
 1. `build_graph` 가 signal *slicer* 받도록 변경 — tool 호출 시 `clock.now_s` 까지 slice 한 view 전달
 2. 또는 매 tick 마다 graph 재build (느림, 임시방편)
-3. `vitalagent/sim_clock.py::slice_signal(signal, end_s, sampling_rate_hz)` helper 추가 + tool dispatch 에 적용
+3. `opsight/sim_clock.py::slice_signal(signal, end_s, sampling_rate_hz)` helper 추가 + tool dispatch 에 적용
 
 본 issue 는 *prototype 의 알려진 simplification* — `docs/project_brief.md §10` "simulated real-time" 의 strict 해석이 가능하나 현재 코드 는 약하게 구현.
 
@@ -185,7 +185,7 @@ _ABP_ALIASES = ("ABP", "MAP", "SNUADC/ART", "Solar8000/ART_MBP",
 
 ### 🟢 Stage 2 / 후속 작업 권고
 
-1. **`vitalagent/preprocessing/`** 신규 module — sensor artifact clip + sampling rate detect + NaN-aware fallback
+1. **`opsight/preprocessing/`** 신규 module — sensor artifact clip + sampling rate detect + NaN-aware fallback
 2. **Streaming signal slicer** — graph 가 매 tick 마다 sim_time 까지의 view 만 보도록
 3. **Real-case batch test** — `tests/integration/test_e2e_real_cohort_10cases.py` (manifest 첫 10 case 로 e2e)
 4. **Cohort artifact 통계** — `scripts/build_cohort.py` 에 modality 별 artifact 비율 (negative MAP, MAP > 250 등) 추가
@@ -201,11 +201,11 @@ _ABP_ALIASES = ("ABP", "MAP", "SNUADC/ART", "Solar8000/ART_MBP",
 
 ---
 
-## Mitigation — `vitalagent/preprocessing/` 추가 (2026-05-18)
+## Mitigation — `opsight/preprocessing/` 추가 (2026-05-18)
 
 ### 산출물
 
-- **`vitalagent/preprocessing/`** 신규 module (4 파일):
+- **`opsight/preprocessing/`** 신규 module (4 파일):
   - `signal_config.py` — 11 modality 의 physiological range / sampling rate / NaN gap 정책 (`SignalConfig` dataclass + alias map)
   - `artifact.py` — `clip_to_physiological()` (Issue #1) + `fill_short_nan_gaps()` (Issue #4)
   - `sampling.py` — `detect_sampling_rate()` + `resample_numpy()` (NaN-preserving)

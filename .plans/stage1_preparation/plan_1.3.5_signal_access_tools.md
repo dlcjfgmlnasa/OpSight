@@ -15,19 +15,19 @@
 
 - [x] **[Priority: High]** 환경 verification — NeuroKit2 설치 시도 + import 결정 + fallback path 확정.
   - 입력: 현재 `.venv` 상태 (`pip list`), xgboost 미설치 누락 패턴의 학습 (plan_1.4 사례)
-  - 출력: 본 plan 파일에 NeuroKit2 install 결과 기록 + `vitalagent/baselines/__init__.py` 와 유사한 fallback 패턴 결정. `pip install neurokit2` 시도 → 성공 시 Primary, 실패 시 numpy 직접 구현 fallback.
+  - 출력: 본 plan 파일에 NeuroKit2 install 결과 기록 + `opsight/baselines/__init__.py` 와 유사한 fallback 패턴 결정. `pip install neurokit2` 시도 → 성공 시 Primary, 실패 시 numpy 직접 구현 fallback.
   - 의존성: 없음 (가장 먼저 실행)
   - 참고: NeuroKit2 는 HRV / BPV / PPG 분석에서 lit-standard 라 직접 구현 대비 정확도 우위. 설치 권장 — `pip install neurokit2` (single dependency, 무거운 의존성 아님). 본 task 의 결과 (PRIMARY / FALLBACK) 가 Tool 19 의 구현 path 결정.
 
 - [x] **[Priority: High]** 공통 `signal_access_tools.py` module 안착 + leakage guard 적용.
-  - 입력: `vitalagent/tools/envelope.py` (`ToolRequest` / `ToolResponse`), `vitalagent/sim_clock.py` (`SimClock.assert_le`), `plan_1.1` channel naming convention (`docs/vitaldb_catalog.md`)
-  - 출력: `vitalagent/tools/signal_access_tools.py` — 5 tool 의 단일 module. 모든 tool 은 `_leakage_guard(request, clock, query_window_end_s)` 를 첫 줄에서 호출.
+  - 입력: `opsight/tools/envelope.py` (`ToolRequest` / `ToolResponse`), `opsight/sim_clock.py` (`SimClock.assert_le`), `plan_1.1` channel naming convention (`docs/vitaldb_catalog.md`)
+  - 출력: `opsight/tools/signal_access_tools.py` — 5 tool 의 단일 module. 모든 tool 은 `_leakage_guard(request, clock, query_window_end_s)` 를 첫 줄에서 호출.
   - 의존성: `plan_1.1` catalog, `plan_1.7` envelope
   - 참고: VitalDB raw load 는 `plan_1.1` 의 `vitaldb.load_case(caseid, track_names, interval)` 패턴 사용. 본 prototype 에서는 synthetic / cache 친화로 작성 가능.
 
 - [x] **[Priority: High]** Result dataclass 5 개 정의.
   - 입력: ADR-016 의 schema sketch
-  - 출력: `vitalagent/tools/signal_access_types.py` — `CurrentVitalsResult`, `SignalDescription`, `VariabilityResult`, `BaselineComparison`, `StateSynthesis` 모두 `@dataclass(frozen=True)`. `meta: dict[str, Any] = field(default_factory=dict)` 필드 공통.
+  - 출력: `opsight/tools/signal_access_types.py` — `CurrentVitalsResult`, `SignalDescription`, `VariabilityResult`, `BaselineComparison`, `StateSynthesis` 모두 `@dataclass(frozen=True)`. `meta: dict[str, Any] = field(default_factory=dict)` 필드 공통.
   - 의존성: 없음
   - 참고: 본 5 dataclass 는 별도 module 에 분리 (fm/result_types.py 와 구분) — FM Interface 무관함을 코드 layout 으로 명시.
 
@@ -92,9 +92,9 @@
 
 - [x] **[Priority: High]** Registry 등록 + dispatch.
   - 입력: 위 5 tool 함수
-  - 출력: `vitalagent/tools/registry.py` 의 `TOOLS` dict 에 `current_state` 카테고리 5 entry 추가. `category="current_state"`. `needs_fm=False`, `needs_signal=False` (signal 은 `case_id` + VitalDB load 로 직접 가져오므로). `call_tool` dispatch 자동 적용.
+  - 출력: `opsight/tools/registry.py` 의 `TOOLS` dict 에 `current_state` 카테고리 5 entry 추가. `category="current_state"`. `needs_fm=False`, `needs_signal=False` (signal 은 `case_id` + VitalDB load 로 직접 가져오므로). `call_tool` dispatch 자동 적용.
   - 의존성: 위 5 tool
-  - 참고: `vitalagent/tools/registry.py::TOOLS` 가 21 entry 보유하도록 한다 (FM 7 + EMR 5 + Knowledge 2 + Auxiliary 2 + Signal Access 5).
+  - 참고: `opsight/tools/registry.py::TOOLS` 가 21 entry 보유하도록 한다 (FM 7 + EMR 5 + Knowledge 2 + Auxiliary 2 + Signal Access 5).
 
 - [x] **[Priority: High]** Pytest suite — 5 tool + registry + leakage guard.
   - 입력: synthetic signal fixtures (HR sine, MAP step, NaN injection)
@@ -142,7 +142,7 @@
 
 ## Definition of done
 
-- 5 개 Signal Access tool (17–21) 구현 완료 + `vitalagent/tools/signal_access_tools.py` importable
+- 5 개 Signal Access tool (17–21) 구현 완료 + `opsight/tools/signal_access_tools.py` importable
 - 5 Result dataclass (`CurrentVitalsResult`, `SignalDescription`, `VariabilityResult`, `BaselineComparison`, `StateSynthesis`) 정의
 - Tool 21 의 stub 이 동작 + `meta.tier0_status="stub"` marker + `[CLINICIAN-REVIEW]` marker
 - Pytest 통과 (`tests/test_signal_access_tools.py`)
@@ -177,11 +177,11 @@
 
 ### 구현 (3 module)
 
-- `vitalagent/tools/signal_access_types.py` — 5 frozen Result dataclass (CurrentVitalsResult / SignalDescription / VariabilityResult / BaselineComparison / StateSynthesis)
-- `vitalagent/tools/signal_access_tools.py` — 5 tool 정식 구현
-- `vitalagent/tools/registry.py` — `TOOLS` dict 가 21 entry 보유 (FM 7 + EMR 5 + Knowledge 2 + Auxiliary 2 + Signal Access 5)
-- `vitalagent/tools/registry.py::call_tool` — `needs_signal=True, needs_fm=False` 조합 dispatch 추가 (3-arg routing)
-- `vitalagent/nodes/deep_brief.py::_deep_args` — 17–21 호출 args 추가
+- `opsight/tools/signal_access_types.py` — 5 frozen Result dataclass (CurrentVitalsResult / SignalDescription / VariabilityResult / BaselineComparison / StateSynthesis)
+- `opsight/tools/signal_access_tools.py` — 5 tool 정식 구현
+- `opsight/tools/registry.py` — `TOOLS` dict 가 21 entry 보유 (FM 7 + EMR 5 + Knowledge 2 + Auxiliary 2 + Signal Access 5)
+- `opsight/tools/registry.py::call_tool` — `needs_signal=True, needs_fm=False` 조합 dispatch 추가 (3-arg routing)
+- `opsight/nodes/deep_brief.py::_deep_args` — 17–21 호출 args 추가
 
 ### Environment verification (task 1)
 

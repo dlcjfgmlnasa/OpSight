@@ -19,25 +19,25 @@
 
 - [x] **[Priority: High]** Baseline 1 — Logistic regression on ABP features.
   - 입력: train split의 ABP 가용 subset, 저혈압 라벨 (MAP < 65 ≥ 1 min, 5분 및 15분 horizon)
-  - 출력: `vitalagent/baselines/logreg_abp.py` + 저장된 모델 + val AUROC / AUPRC
+  - 출력: `opsight/baselines/logreg_abp.py` + 저장된 모델 + val AUROC / AUPRC
   - 의존성: split, 저혈압 라벨 (inline 정의)
   - 참고: feature는 lit.-standard (mean BP slope, SD, sample entropy 등)
 
 - [x] **[Priority: High]** Baseline 2 — XGBoost multi-modal.
   - 입력: 모든 modality feature (ABP + PPG + ECG-derived HRV + EMR baseline)
-  - 출력: `vitalagent/baselines/xgb_multimodal.py` + val metric
+  - 출력: `opsight/baselines/xgb_multimodal.py` + val metric
   - 의존성: split
   - 참고: missing modality 처리 명시 (XGBoost native NaN 또는 imputation 결정).
 
 - [x] **[Priority: High]** Baseline 3 — LSTM on ABP waveform.
   - 입력: raw ABP waveform window (크기 결정 필요, 예: 5분)
-  - 출력: `vitalagent/baselines/lstm_abp.py` + val metric
+  - 출력: `opsight/baselines/lstm_abp.py` + val metric
   - 의존성: split
   - 참고: PyTorch 사용. FM과 비교 가능한 input 길이로 설정.
 
 - [x] **[Priority: Medium]** Baseline 4 — Hatib HPI-style reconstruction (open-source approximation).
   - 입력: ABP waveform
-  - 출력: `vitalagent/baselines/hatib_style.py` + val metric
+  - 출력: `opsight/baselines/hatib_style.py` + val metric
   - 의존성: split
   - 참고: 정확한 HPI는 commercial — open re-implementation임을 paper에 명시한다. `[CLINICIAN-REVIEW]` 적절성 확인.
 
@@ -83,10 +83,10 @@
 
 ### 인프라 — 4 module 정식화
 
-- `vitalagent/baselines/types.py` — `BaselinePredictor` Protocol (4 method) + `BaselineResult` (frozen dataclass) + `BaselineConfig`
-- `vitalagent/baselines/labels.py` — `label_h5`, `label_h15`, `label_hypotension_window` (NaN-safe, vectorized run-length)
-- `vitalagent/baselines/features.py` — 10 ABP feature + 15 multimodal feature 추출
-- `vitalagent/baselines/splits.py` — `make_splits()` reproducible + stratified
+- `opsight/baselines/types.py` — `BaselinePredictor` Protocol (4 method) + `BaselineResult` (frozen dataclass) + `BaselineConfig`
+- `opsight/baselines/labels.py` — `label_h5`, `label_h15`, `label_hypotension_window` (NaN-safe, vectorized run-length)
+- `opsight/baselines/features.py` — 10 ABP feature + 15 multimodal feature 추출
+- `opsight/baselines/splits.py` — `make_splits()` reproducible + stratified
 
 ### 4 baseline 구현
 
@@ -99,7 +99,7 @@
 
 ### 핵심 unblocker — `BaselineFMAdapter`
 
-`vitalagent/baselines/fm_adapter.py` — **어떤** `BaselinePredictor` 라도 `BiosignalFMInterface` Protocol 을 만족하는 mock FM 으로 wrap. 8 method 전수 구현:
+`opsight/baselines/fm_adapter.py` — **어떤** `BaselinePredictor` 라도 `BiosignalFMInterface` Protocol 을 만족하는 mock FM 으로 wrap. 8 method 전수 구현:
 
 | Protocol method | adapter 구현 전략 |
 |----------------|-------------------|
@@ -144,7 +144,7 @@
 ### plan_1.7.5 (Tier 3 Light ML Mock FM) — unblock
 
 - 본 sprint 의 `BaselineFMAdapter` 가 plan_1.7.5 의 핵심 dependency
-- plan_1.7.5 시 `configs/fm/mock_light_ml.yaml` + `vitalagent/fm/factory.py::create_fm` 의 `mock_light_ml` 분기에서 본 adapter 사용
+- plan_1.7.5 시 `configs/fm/mock_light_ml.yaml` + `opsight/fm/factory.py::create_fm` 의 `mock_light_ml` 분기에서 본 adapter 사용
 - 학습된 baseline checkpoint 경로 (BaselineConfig.checkpoint_path) → factory 가 load
 
 ### 후속 항목 (plan_1.2 cohort 합류 후)

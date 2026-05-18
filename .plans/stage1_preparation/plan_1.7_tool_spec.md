@@ -42,7 +42,7 @@
 
 - [x] **[Priority: Medium]** Tool registry module.
   - 입력: 위 spec
-  - 출력: `vitalagent/tools/registry.py` — `TOOLS: dict[str, ToolSpec]` central registry. LangGraph에서 한 줄로 import 가능.
+  - 출력: `opsight/tools/registry.py` — `TOOLS: dict[str, ToolSpec]` central registry. LangGraph에서 한 줄로 import 가능.
   - 의존성: 위 task 모두
   - 참고: stub 구현도 동일 module에서 import한다. Stage 2의 swap path를 깨끗하게 유지하기 위함.
 
@@ -71,7 +71,7 @@
 - 16개 tool 모두 보유: JSON input schema, JSON output schema, 한글 + 영문 description, failure mode 목록
 - 7개 FM tool의 stub 구현이 end-to-end callable (placeholder 반환)
 - 5개 EMR tool schema가 `plan_1.3` 구현과 일치 (pytest 검증)
-- `vitalagent/tools/registry.py` importable
+- `opsight/tools/registry.py` importable
 
 ## Data contracts established here
 
@@ -92,10 +92,10 @@
 
 ### 구현된 코드
 
-- `vitalagent/tools/knowledge_tools_stub.py` — tool 13 + 14 STUB
-- `vitalagent/tools/auxiliary_tools.py` — tool 15 STUB + tool 16 정식 구현 (3 method: weighted_mean / max_quality / min_uncertainty)
-- `vitalagent/tools/registry.py` — TOOLS dict 가 16 entry 모두 보유; 카테고리 (fm/emr/knowledge/auxiliary)
-- `vitalagent/nodes/deep_brief.py::_deep_args` — 13–16 호출 args 추가
+- `opsight/tools/knowledge_tools_stub.py` — tool 13 + 14 STUB
+- `opsight/tools/auxiliary_tools.py` — tool 15 STUB + tool 16 정식 구현 (3 method: weighted_mean / max_quality / min_uncertainty)
+- `opsight/tools/registry.py` — TOOLS dict 가 16 entry 모두 보유; 카테고리 (fm/emr/knowledge/auxiliary)
+- `opsight/nodes/deep_brief.py::_deep_args` — 13–16 호출 args 추가
 
 ### Test
 
@@ -126,7 +126,7 @@ Protocol method `encode()` 는 tool 로 노출되지 않음 — 내부 latent re
 
 ### Static check — concrete FM class import 금지
 
-`tests/integration/test_smoke_single_case.py::test_no_concrete_fm_import_in_node_or_graph_module` 가 `vitalagent/nodes/` + `vitalagent/graph.py` + (extension) `vitalagent/tools/` 에서 `StubBiosignalFM` / `RuleBasedBiosignalFM` / `LightMLBiosignalFM` / `RealBiosignalFM` 어느 것도 import 하지 않음을 검증. ADR-011 swap mechanism 보존.
+`tests/integration/test_smoke_single_case.py::test_no_concrete_fm_import_in_node_or_graph_module` 가 `opsight/nodes/` + `opsight/graph.py` + (extension) `opsight/tools/` 에서 `StubBiosignalFM` / `RuleBasedBiosignalFM` / `LightMLBiosignalFM` / `RealBiosignalFM` 어느 것도 import 하지 않음을 검증. ADR-011 swap mechanism 보존.
 
 ---
 

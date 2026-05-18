@@ -22,10 +22,10 @@ from typing import Any
 
 import pytest
 
-from vitalagent.fm.factory import AlertCallback, make_fallback
-from vitalagent.fm.interface import BiosignalFMInterface
-from vitalagent.fm.mock_stub import StubBiosignalFM
-from vitalagent.fm.result_types import HypotensionResult
+from opsight.fm.factory import AlertCallback, make_fallback
+from opsight.fm.interface import BiosignalFMInterface
+from opsight.fm.mock_stub import StubBiosignalFM
+from opsight.fm.result_types import HypotensionResult
 
 
 # ── Helpers / 헬퍼 ──
@@ -193,6 +193,6 @@ def test_default_alert_emits_warning_log(caplog: pytest.LogCaptureFixture) -> No
     primary = _FailingPrimary(seed=1)
     fallback = StubBiosignalFM(seed=42)
     fm = make_fallback(primary, fallback)
-    with caplog.at_level(logging.WARNING, logger="vitalagent.fm.factory"):
+    with caplog.at_level(logging.WARNING, logger="opsight.fm.factory"):
         fm.predict_hypotension({}, 5, [])
     assert any("primary failed" in rec.message.lower() for rec in caplog.records)

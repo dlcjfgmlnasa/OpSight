@@ -42,3 +42,6 @@ data/runs/*.json
 .claude/settings.local.json
 .claude/agent-memory/*/MEMORY.md
 .claude/agent-memory/*/*.md
+
+# Obsidian app workspace metadata (per-user UI state)
+obsidian/.obsidian/

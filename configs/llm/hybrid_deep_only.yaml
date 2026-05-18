@@ -1,0 +1,15 @@
+# LLM config — hybrid: placeholder for shallow, vLLM for deep
+# Useful when only Heavy (70B) GPU is available; Light stays as template.
+# Heavy GPU 만 가용한 경우 — shallow 는 placeholder, deep 만 vLLM.
+llm:
+  implementation: hybrid
+  shallow:
+    kind: placeholder
+  deep:
+    kind: vllm
+    endpoint: "http://gpu1:8000/v1"
+    model: "meta-llama/Llama-3.3-70B-Instruct"
+    system_prompt_path: "prompts/v2_heavy_deep_brief.md"
+    max_tokens: 900
+    temperature: 0.2
+    timeout_s: 50.0

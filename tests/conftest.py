@@ -1,9 +1,9 @@
 """Pytest configuration / pytest 설정.
 
 Ensures the project root is on ``sys.path`` so tests can import
-``vitalagent.*`` without needing an editable install.
+``opsight.*`` without needing an editable install.
 프로젝트 root를 ``sys.path``에 추가하여 editable install 없이도
-``vitalagent.*`` import가 가능하게 한다.
+``opsight.*`` import가 가능하게 한다.
 """
 from __future__ import annotations
 

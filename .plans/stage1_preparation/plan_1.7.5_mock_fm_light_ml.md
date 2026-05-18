@@ -13,7 +13,7 @@
 
 - [x] **[Priority: Medium]** `LightMLBiosignalFM` scaffold + Protocol compliance.
   - 입력: `plan_1.2.5` Protocol, `plan_1.4` baseline
-  - 출력: `vitalagent/fm/mock_light_ml.py` skeleton. `tests/test_fm_protocol_compliance.py` 통과.
+  - 출력: `opsight/fm/mock_light_ml.py` skeleton. `tests/test_fm_protocol_compliance.py` 통과.
   - 의존성: `plan_1.2.5`, `plan_1.4`
   - 참고: `plan_1.4` artifact 경로에서 저장된 baseline checkpoint를 로드한다.
 
@@ -53,7 +53,7 @@
 
 ## Definition of done (실행 시점에만 적용)
 
-- `vitalagent/fm/mock_light_ml.py`가 8개 method 모두 구현 (가능한 곳은 baseline 활용, 그 외는 Tier-2 rule로 fallback)
+- `opsight/fm/mock_light_ml.py`가 8개 method 모두 구현 (가능한 곳은 baseline 활용, 그 외는 Tier-2 rule로 fallback)
 - Protocol compliance + smoke test 통과
 - `configs/fm/mock_light_ml.yaml`에 latency 표 + method 매핑 문서화
 
@@ -78,9 +78,9 @@
 
 ### 구현
 
-- `vitalagent/fm/mock_light_ml.py` — `LightMLBiosignalFM` (8 Protocol method via `BaselineFMAdapter` 위임)
+- `opsight/fm/mock_light_ml.py` — `LightMLBiosignalFM` (8 Protocol method via `BaselineFMAdapter` 위임)
 - `configs/fm/mock_light_ml.yaml` — TEMPLATE → 실 config 전환 (primary_baseline 기본 `logreg_abp`, optional checkpoint_path)
-- `vitalagent/fm/factory.py::create_fm` — 기존 `mock_light_ml` 분기 작동 확인 (코드 변경 0, lazy import 만 활성화)
+- `opsight/fm/factory.py::create_fm` — 기존 `mock_light_ml` 분기 작동 확인 (코드 변경 0, lazy import 만 활성화)
 
 ### Method backing 매핑 (실 구현)
 

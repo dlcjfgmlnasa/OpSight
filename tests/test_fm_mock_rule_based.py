@@ -20,7 +20,7 @@ import numpy as np
 import pytest
 import torch
 
-from vitalagent.fm.mock_rule_based import (
+from opsight.fm.mock_rule_based import (
     ARREST_HR_HIGH,
     ARREST_HR_LOW,
     ARREST_MAP_LOW,
@@ -34,7 +34,7 @@ from vitalagent.fm.mock_rule_based import (
     RuleBasedBiosignalFM,
     TREND_STABLE_BAND,
 )
-from vitalagent.fm.result_types import (
+from opsight.fm.result_types import (
     AnomalyResult,
     ArrestResult,
     ConsistencyResult,

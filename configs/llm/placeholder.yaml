@@ -1,0 +1,5 @@
+# LLM config — placeholder (template-based, no LLM call)
+# Default for prototype before vLLM hardware available.
+# vLLM hardware 부재 시 default.
+llm:
+  implementation: placeholder

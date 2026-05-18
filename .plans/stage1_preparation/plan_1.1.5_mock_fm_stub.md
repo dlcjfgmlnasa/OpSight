@@ -13,7 +13,7 @@
 
 - [x] **[Priority: High]** Result dataclass 정의 (`HypotensionResult`, `ArrestResult`, `QualityResult`, `ConsistencyResult`, `TrendResult`, `ForecastResult`, `AnomalyResult`). (2026-05-16 완료)
   - 입력: ADR-011 method signature, `docs/project_brief.md §7.1` FM-tool output
-  - 출력: `vitalagent/fm/result_types.py` — 7개 frozen dataclass, typed field, JSON-serializable
+  - 출력: `opsight/fm/result_types.py` — 7개 frozen dataclass, typed field, JSON-serializable
   - 의존성: 없음
   - 참고: 본 shape는 모든 mock + real FM이 따른다. 변경 시 ADR 갱신 필요.
   - **구현 결정 (sprint Step 1)**:
@@ -25,7 +25,7 @@
 
 - [x] **[Priority: High]** `StubBiosignalFM` class 구현. (2026-05-16 완료)
   - 입력: ADR-011 Protocol method 목록
-  - 출력: `vitalagent/fm/mock_stub.py` — 8개 method 모두를 valid shape / range 범위의 random output (seedable)으로 반환하는 class
+  - 출력: `opsight/fm/mock_stub.py` — 8개 method 모두를 valid shape / range 범위의 random output (seedable)으로 반환하는 class
   - 의존성: result types ✅, interface Protocol ✅
   - 참고: numpy / torch random 사용. `seed`로 deterministic.
   - **구현 결정 (sprint Step 2 / C1)**:
@@ -119,7 +119,7 @@
 
 - [x] **[Priority: Medium]** Stub의 caveat 문서화. (2026-05-16 완료)
   - 입력: 위 산출물 ✅
-  - 출력: `vitalagent/fm/mock_stub.py` module docstring — "output은 random이며 reasoning 검증용 아님. Tier 2를 사용할 것" 명시
+  - 출력: `opsight/fm/mock_stub.py` module docstring — "output은 random이며 reasoning 검증용 아님. Tier 2를 사용할 것" 명시
   - 의존성: 없음
   - 참고: 미래의 본인 / 타 agent가 stub 출력으로 reasoning을 평가하는 사고를 방지.
   - **구현 결정 (sprint Step 2 / C5)**:
@@ -134,13 +134,13 @@
 
 ## Definition of done
 
-- `vitalagent/fm/result_types.py`와 `vitalagent/fm/mock_stub.py`가 commit되고 importable
+- `opsight/fm/result_types.py`와 `opsight/fm/mock_stub.py`가 commit되고 importable
 - Unit test + smoke test 통과
 - Stub이 `BiosignalFMInterface`를 만족 (`plan_1.2.5`에서 추후 검증)
 
 ## Data contracts established here
 
-- **Result dataclass shape** — 모든 mock tier와 real FM이 정확히 이 type을 산출해야 한다. Schema는 `vitalagent/fm/result_types.py`에 위치.
+- **Result dataclass shape** — 모든 mock tier와 real FM이 정확히 이 type을 산출해야 한다. Schema는 `opsight/fm/result_types.py`에 위치.
 
 ## Related work
 

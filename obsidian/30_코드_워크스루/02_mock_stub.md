@@ -1,19 +1,17 @@
-# 02. Mock Stub — `vitalagent/fm/mock_stub.py`
+# 02. Mock Stub — `opsight/fm/mock_stub.py`
 
-> FM 자리에 끼우는 첫 단계 mock. 신호를 *보지 않고* 그저 valid range 안의 random 숫자를 뱉는다. 코드 흐름과 latency 시뮬레이션만 검증하기 위한 것.
+> Tier 1. Valid range 안의 **random** 값. Interface 안착 + latency 시뮬레이션 전용.
 
-## 이 mock 으로 무엇을 하면 안 되는가
-
-코드 docstring 에 박아둔 경고가 그대로 있다.
+## ⚠️ HARD CAVEAT (코드 docstring 에 박혀 있음)
 
 ```
-STUB OUTPUT 으로 절대 하지 말 것:
-1. 임상 결정 / 환자 대상 권고
-2. Agent reasoning 검증 (brief 의 faithfulness, risk-trend logic 등)
-3. Real-FM 의 latency 또는 accuracy benchmark
+DO NOT USE STUB OUTPUT FOR:
+1. Clinical decisions or any patient-facing recommendation.
+2. Agent-reasoning validation (e.g. brief faithfulness, risk-trend logic).
+3. Real-FM latency or accuracy benchmarking.
 ```
 
-이 mock 은 *문법* 만 검증한다. *의미* 는 Tier 2 (rule-based) 또는 real FM 의 영역이다. 자세한 배경은 [[20_아키텍처/Mock_FM_3_Tier_전략]].
+Stub 은 *문법* 만 검증. *의미* 는 Tier 2 (rule-based) 또는 real FM. [[20_아키텍처/Mock_FM_3_Tier_전략]] 참조.
 
 ## 클래스 구조
 
@@ -32,23 +30,14 @@ class StubBiosignalFM:
         self._np_rng = np.random.default_rng(seed)
         self._torch_gen = torch.Generator()
         self._torch_gen.manual_seed(seed)
-        # Latency 설정
         self._latency_sim_sec = float(latency_sim_sec)
         self._latency_per_method = dict(latency_per_method or {})
         self._latency_jitter_pct = float(latency_jitter_pct)
 ```
 
-### Random number generator 가 2개인 이유
+RNG 2개: numpy (scalar / array) + torch (`encode` 가 tensor 반환). 같은 seed → 같은 출력 (결정성).
 
-```python
-self._np_rng = np.random.default_rng(seed)
-self._torch_gen = torch.Generator()
-self._torch_gen.manual_seed(seed)
-```
-
-scalar/array 는 numpy 로, `encode` 가 반환할 tensor 는 torch 로 만든다. 둘 다 같은 seed 에서 시작한다. 그래서 **결정적** 이다 — 같은 seed 면 항상 같은 출력이 나온다. Unit test 에서 expected value 를 박을 수 있다.
-
-## 8 method 가 모두 latency decorator 로 감싸진다
+## 8 method — `@_simulate_latency` decorator 로 wrap
 
 ```python
 def _simulate_latency(method):
@@ -75,9 +64,7 @@ class StubBiosignalFM:
     # ... 6개 더
 ```
 
-decorator 가 method 호출 직전에 `_sleep_for(method_name)` 을 부른다. method 본체는 그저 random 값 반환.
-
-### Latency 시뮬레이션 — 진짜 FM 인 척 시간을 쓴다
+### Latency simulation
 
 ```python
 def _sleep_for(self, method_name):
@@ -92,41 +79,34 @@ def _sleep_for(self, method_name):
         time.sleep(base)
 ```
 
-세 가지 옵션이 있다.
+- 전역 default + method-specific override
+- `latency_jitter_pct`: 분포 시뮬레이션
+- `time.sleep` (sync) — LangGraph node 가 sync 라서
 
-- **전역 기본값** (`latency_sim_sec`)
-- **method 별 override** (`latency_per_method`)
-- **jitter** (`latency_jitter_pct`) — 분포를 시뮬레이션. 실제 inference 도 매번 같은 시간이 걸리진 않으니까
+## 각 method 의 출력 range
 
-`time.sleep` (sync) 을 쓰는 이유는 — LangGraph node 가 sync 환경이라서. async 가 아니다.
-
-자세한 dual-mode 의 latency 의미는 [[20_아키텍처/Dual_mode_architecture]].
-
-## 각 method 가 반환하는 값의 range
-
-| Method | 출력 range / shape |
-|--------|---------------------|
-| `encode` | `torch.Tensor`, shape `(latent_dim,)`, 기본 `(128,)` |
+| Method | Range / shape |
+|--------|---------------|
+| `encode` | `torch.Tensor` `(latent_dim,)`, default `(128,)` |
 | `predict_hypotension` | risk ∈ `[0, 1]`, uncertainty ∈ `[0, 0.5]` |
-| `predict_cardiac_arrest` | risk ∈ `[0, 0.2]` (rare event 라서 좁게), uncertainty ∈ `[0, 0.5]` |
-| `assess_signal_quality` | score ∈ `[0, 1]`, reason 은 score < 0.5 일 때만 `"stub-random low quality"` |
+| `predict_cardiac_arrest` | risk ∈ `[0, 0.2]` (rare event proxy) |
+| `assess_signal_quality` | score ∈ `[0, 1]`, reason 은 score < 0.5 일 때만 |
 | `cross_modal_consistency` | score ∈ `[0, 1]` |
-| `temporal_trend` | slope ∈ `[-5, 5]`, label 은 derived (`\|slope\| < 1` → stable, > 0 → rising, < 0 → falling) |
-| `forecast_signal` | `list[float]`, 길이 = `horizon_min`, value ∈ `[50, 120]` |
+| `temporal_trend` | slope ∈ `[-5, 5]`, label derived |
+| `forecast_signal` | `list[float]` len=`horizon_min`, values ∈ `[50, 120]` |
 | `anomaly_score` | score ∈ `[0, 1]` |
 
-모든 Result 의 `meta` 에 `"mock_tier": "stub"` 이 박힌다. 그래서 trace 를 보는 사람이 이 값이 stub 에서 왔다는 걸 명확히 알 수 있다.
+모든 Result 의 `meta` 에 `"mock_tier": "stub"` 박힘.
 
-## Config 파일
+## Config — `configs/fm/mock_stub.yaml`
 
 ```yaml
-# configs/fm/mock_stub.yaml
 fm:
   implementation: mock_stub
   config:
     seed: 42
     latent_dim: 128
-    latency_sim_sec: 0.0   # 기본 = sleep 없음
+    latency_sim_sec: 0.0   # default = no sleep
     latency_per_method:
       encode:                   0.080
       predict_hypotension:      0.030
@@ -139,32 +119,28 @@ fm:
     latency_jitter_pct: 0.15
 ```
 
-이렇게 두면 8 method 가 실제 FM 과 비슷한 latency 분포를 흉내낸다. `latency_sim_sec: 0` 이면 sleep 자체가 없어서 unit test 가 빠르게 돈다.
+`latency_sim_sec: 0` 이면 sleep 없음 (unit test 친화).
 
-## Test
+## Tests
 
 | 파일 | 개수 |
 |------|------|
-| `tests/test_fm_mock_stub.py` | 16 (method 별 출력 + 결정성 + JSON + latency 4종) |
-| `tests/test_fm_mock_stub_smoke.py` | 6 (단일 case 통합 sweep) |
-| `tests/test_fm_protocol_compliance.py` | 3 (parametrized — Stub 자동 포함) |
+| `tests/test_fm_mock_stub.py` | 16 (method 별 + determinism + JSON + latency 4) |
+| `tests/test_fm_mock_stub_smoke.py` | 6 (단일 case 통합) |
+| `tests/test_fm_protocol_compliance.py` | 3 (Stub 포함) |
 
-합 25개.
+총 25.
 
-## "Stub 은 signal 을 무시한다" — pyright 경고
+## "Stub 은 signal 무시" — Pyright info
 
 ```
 ℹ Parameter 'signal' value is not used
 ```
 
-Stub 의 8 method 는 signal 인자를 받지만 안 쓴다 (그저 random 을 뱉으니까). Pyright 는 이걸 info-level 로 경고한다.
-
-이건 **의도된 동작** 이다. Protocol signature (`def encode(self, signal, ...)`) 를 따라야 isinstance 검사가 통과하니까 인자는 반드시 받아야 한다. 안 쓸 뿐이다.
-
-Tier 2 (rule-based) 는 signal 을 *실제로* 쓴다. 거기 가서 보면 차이가 명확하다 → [[03_mock_rule_based]].
+Protocol signature 유지를 위해 인자는 받지만 안 씀. 의도. Rule-based (Tier 2) 는 signal 을 실제 사용 → [[03_mock_rule_based]].
 
 ## 다음 노트
 
-- [[03_mock_rule_based]] — Tier 2 가 signal 을 어떻게 *실제로* 쓰는가
-- [[01_fm_layer]] — Stub 이 어떻게 Protocol 을 만족하는가
-- [[20_아키텍처/Mock_FM_3_Tier_전략]] — Stub 의 위치가 전체 그림에서 어디인가
+- [[03_mock_rule_based]] — Tier 2 가 signal 을 어떻게 쓰는가
+- [[01_fm_layer]] — Stub 이 Protocol 을 어떻게 만족하는가
+- [[10_기초/Pydantic_과_typed_state]] — `latency_per_method` 같은 config 검증

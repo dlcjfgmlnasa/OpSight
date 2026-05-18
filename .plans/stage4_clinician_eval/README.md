@@ -7,7 +7,7 @@
 
 - 5–7명 anesthesiologist 평가자 onboarding. `docs/project_brief.md §11.1`의 정확한 N에 대한 TODO 해결.
 - 200–300 브리프 case를 surgery type / risk level / signal-quality regime에 대해 stratified sampling.
-- VitalAgent 브리프 vs ≥ 1개 baseline 브리프의 blinded rating UI / spreadsheet workflow 구축.
+- OpSight 브리프 vs ≥ 1개 baseline 브리프의 blinded rating UI / spreadsheet workflow 구축.
 - 5-point Likert × 5 차원. Cohen's κ inter-rater agreement 계산.
 - 결과를 `results/clinician_eval/`에 freeze (Stage 5 paper에 포함).
 

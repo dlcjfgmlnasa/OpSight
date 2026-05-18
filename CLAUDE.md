@@ -1,11 +1,11 @@
-# VitalAgent — Claude Code 진입점 (Entrypoint)
+# OpSight — Claude Code 진입점 (Entrypoint)
 
 > 이 repo에서 작업을 시작하는 모든 Claude (또는 사람)을 위한 짧은 안내.
 > 전체 프로젝트 맥락은 **`docs/project_brief.md`를 먼저 읽는다**.
 
 ## 1. 본 프로젝트 (What this project is)
 
-**VitalAgent**는 multimodal biosignal Foundation Model (K-MIMIC ICU pretrained, frozen backend로 활용)을 기반으로 한 tool-using LLM agent다. 술중 (intraoperative) 혈역학 (hemodynamics) 추론을 시뮬레이션된 실시간 (simulated real-time)으로 수행한다.
+**OpSight**는 multimodal biosignal Foundation Model (K-MIMIC ICU pretrained, frozen backend로 활용)을 기반으로 한 tool-using LLM agent다. 술중 (intraoperative) 혈역학 (hemodynamics) 추론을 시뮬레이션된 실시간 (simulated real-time)으로 수행한다.
 
 - 비심장 주요 수술 (non-cardiac major surgery; general / thoracic / urologic / gynecologic) 전반에 대해 Universal
 - 모달리티 비의존 (modality-agnostic), 신호 품질 인지 (quality-aware), 수술 인지 (surgery-aware)

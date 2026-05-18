@@ -14,8 +14,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from vitalagent.fm.factory import create_fm
-from vitalagent.fm.interface import BiosignalFMInterface
+from opsight.fm.factory import create_fm
+from opsight.fm.interface import BiosignalFMInterface
 
 CONFIGS_DIR = Path(__file__).resolve().parent.parent / "configs" / "fm"
 

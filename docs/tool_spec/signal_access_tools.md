@@ -2,7 +2,7 @@
 
 > 5 deterministic signal-access tool 의 정식 schema + LLM description + failure mode.
 > ADR-016 Signal Access 카테고리 (Accepted 2026-05-17).
-> Code: `vitalagent/tools/signal_access_tools.py` + `vitalagent/tools/signal_access_types.py`.
+> Code: `opsight/tools/signal_access_tools.py` + `opsight/tools/signal_access_types.py`.
 > Description tone: `prompts/v1_tool_description_style.md` 4-line skeleton 준수.
 
 ---

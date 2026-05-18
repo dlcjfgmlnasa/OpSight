@@ -74,3 +74,25 @@ included: bool          # always True in manifest.parquet
 - `surgery_type == 'other'` 비율 — VitalDB `department` 가 4 표준 외 값을 가지면 발생. 본 dataset (2026-05-16 snapshot) 은 4 department 만.
 
 [CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요] — surgery_type 분포의 임상적 타당성, ABP 가용성 편차 해석.
+
+## 5. Modality 별 artifact / NaN ratio (Sprint 6 추가)
+
+> 첫 10 case sample 기반. Physiological range 임계는 `opsight/preprocessing/signal_config.py` 의 `SIGNAL_CONFIGS`.
+> `out_of_range_ratio` = valid sample 중 physiological_min/max 범위 밖 비율.
+> `[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]` — range 임계의 임상 적절성.
+
+| modality | n_cases | nan_ratio mean | nan p95 | OOR ratio mean | OOR p95 | OOR max |
+|----------|---------|----------------|---------|----------------|---------|---------|
+| `HR` | 10 | 53.7% | 56.9% | 0.00% | 0.00% | 0.00% |
+| `ABP` | 10 | 80.0% | 100.0% | 12.67% | 59.22% | 100.00% |
+| `Solar8000/NIBP_MBP` | 10 | 74.1% | 100.0% | 0.00% | 0.00% | 0.00% |
+| `SpO2` | 10 | 53.1% | 55.5% | 0.00% | 0.00% | 0.00% |
+| `EtCO2` | 10 | 55.2% | 62.7% | 0.00% | 0.00% | 0.00% |
+| `BIS` | 10 | 8.8% | 44.3% | 0.00% | 0.00% | 0.00% |
+
+### 해석 hint
+
+- **NaN ratio 가 50%+ 인 modality** (HR / ABP / SpO2 등) — Solar8000 native rate (~0.5Hz) 가 1Hz resample 와 mismatch. 정상.
+- **NaN ratio 가 95%+** (NIBP) — cuff 측정 주기 (~5분 1회). 정상.
+- **OOR (out-of-range) 비율 > 1%** — sensor artifact 비율 추정. preprocessing 의 `clip_to_physiological` 가 자동 처리.
+- **OOR max** 가 큰 case — *문제 case*. cohort filtering 또는 manual review 후보.

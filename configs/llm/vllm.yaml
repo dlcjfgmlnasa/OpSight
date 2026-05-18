@@ -1,0 +1,19 @@
+# LLM config — vLLM-backed Light (8B) + Heavy (70B)
+# Hardware: 2× L40S 48GB. Light on GPU1, Heavy on GPU2 (separate vLLM processes).
+# Sprint 6 wiring sketch — endpoints not yet deployed.
+llm:
+  implementation: vllm
+  shallow:
+    endpoint: "http://gpu1:8000/v1"     # Light Llama-3.1-8B (vLLM)
+    model: "meta-llama/Llama-3.1-8B-Instruct"
+    system_prompt_path: "prompts/v1_light_shallow.md"
+    max_tokens: 80
+    temperature: 0.1
+    timeout_s: 8.0
+  deep:
+    endpoint: "http://gpu2:8000/v1"     # Heavy Llama-3.3-70B (vLLM)
+    model: "meta-llama/Llama-3.3-70B-Instruct"
+    system_prompt_path: "prompts/v2_heavy_deep_brief.md"
+    max_tokens: 900
+    temperature: 0.2
+    timeout_s: 50.0

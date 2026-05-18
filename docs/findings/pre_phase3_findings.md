@@ -291,7 +291,7 @@ Priority list는 `Primus/SEVOFLURANE_VOL`이 존재한다고 가정한다. **존
 ## 10. 재현성 (Reproducibility)
 
 ```powershell
-# from C:\Projects\VitalAgent
+# from C:\Projects\OpSight
 .\.venv\Scripts\python.exe notebooks\00_vitaldb_quick_exploration.py
 # Cache files: notebooks\_cache\{cases,trks}.csv  (delete to force re-fetch)
 ```

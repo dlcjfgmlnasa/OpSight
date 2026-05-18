@@ -20,9 +20,9 @@
 #   noise_seed           : independent seed for the noise RNG.
 #
 # Thresholds are baked into the implementation
-# (vitalagent/fm/mock_rule_based.py) as module-level constants — change them
+# (opsight/fm/mock_rule_based.py) as module-level constants — change them
 # there + amend ADR-011 if needed. Listed here for documentation only.
-# Threshold는 구현체 (vitalagent/fm/mock_rule_based.py) 안 module-level 상수에
+# Threshold는 구현체 (opsight/fm/mock_rule_based.py) 안 module-level 상수에
 # 박혀 있다 — 변경 필요 시 그곳을 수정하고 ADR-011을 amend한다. 여기엔 참고용.
 # ─────────────────────────────────────────────────────────────────────────────
 fm:

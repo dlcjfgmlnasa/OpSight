@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import pytest
 
-from vitalagent.state import AgentState, QualitySample, RiskSample
-from vitalagent.tools.envelope import ToolResponse
-from vitalagent.triggers import (
+from opsight.state import AgentState, QualitySample, RiskSample
+from opsight.tools.envelope import ToolResponse
+from opsight.triggers import (
     ARREST_RISK_THRESHOLD,
     CONSISTENCY_GOOD_QUALITY_GATE,
     CONSISTENCY_THRESHOLD,

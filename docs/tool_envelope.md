@@ -1,8 +1,8 @@
 # Tool Envelope — Authoritative Spec (plan_1.7 산출물)
 
 > 모든 16 tool 의 공통 입출력 schema.
-> 본 문서는 `vitalagent/tools/envelope.py` 코드와 1:1 일치하며, **본 문서가 정식 spec**이다.
-> 의존성: `docs/project_brief.md §7 / §13.2`, `vitalagent/state.py` (LangGraph state schema).
+> 본 문서는 `opsight/tools/envelope.py` 코드와 1:1 일치하며, **본 문서가 정식 spec**이다.
+> 의존성: `docs/project_brief.md §7 / §13.2`, `opsight/state.py` (LangGraph state schema).
 
 ---
 

@@ -10,7 +10,7 @@
 
 Biosignal Foundation Model (BFM)은 별도 프로젝트 (`C:\Projects\Biosignal-Foundation-Model\`)에서 학습되며, 프로젝트 시작 시점으로부터 **약 2개월** 후 완료될 것으로 예상된다. 이는 **Stage 1 (Month 1–2) 전체 기간**과 일치한다.
 
-VitalAgent system 개발이 FM 가용성에 막혀 멈춘다면, 핵심 agent 인프라 (LangGraph dual-mode, 16-tool registry, system prompt, dual-LLM orchestration, 시뮬레이션된 실시간 (simulated real-time) loop) 2개월이 유휴 상태가 된다. 이는 낭비일 뿐 아니라 risk 증폭 요인이다 — 통합이 Stage 2 단일 sprint로 압축되어 mock-vs-real 발견과 흡수 시간이 사라진다.
+OpSight system 개발이 FM 가용성에 막혀 멈춘다면, 핵심 agent 인프라 (LangGraph dual-mode, 16-tool registry, system prompt, dual-LLM orchestration, 시뮬레이션된 실시간 (simulated real-time) loop) 2개월이 유휴 상태가 된다. 이는 낭비일 뿐 아니라 risk 증폭 요인이다 — 통합이 Stage 2 단일 sprint로 압축되어 mock-vs-real 발견과 흡수 시간이 사라진다.
 
 업계 표준 패턴은 **interface로 consumer와 producer를 분리하고**, 동일 interface를 구현한 mock에 대해 consumer를 개발한 뒤, producer가 준비되면 swap하는 것이다.
 
@@ -24,15 +24,15 @@ Stage 1 동안 Biosignal Foundation Model에 대해 **3-tier mock strategy**를 
 
 | Tier | Name | Purpose (목적) | Behavior (동작) | Latency | Owner deliverable |
 |------|------|----------------|-----------------|---------|-------------------|
-| 1 | **Stub Mock** | Interface 정의 + latency 시뮬레이션 | 유효 shape/range 내 random 출력 | configurable sleep | `vitalagent/fm/mock_stub.py` (plan_1.1.5) |
-| 2 | **Rule-based Mock** | Realistic I/O로 agent reasoning 검증 | 신호 통계 기반 plausible 출력 (ABP trend, NaN-ratio 품질, correlation 기반 consistency 등) | real-FM 예상 latency와 일치 | `vitalagent/fm/mock_rule_based.py` (plan_1.6.5) |
-| 3 | **Light ML Mock** *(optional)* | 학습된 모델로 real-FM proxy 제공 | Stage 1.4 baseline (Logistic / XGBoost / LSTM)을 Protocol 뒤에서 wrapping | real-baseline inference | `vitalagent/fm/mock_light_ml.py` (plan_1.7.5) |
+| 1 | **Stub Mock** | Interface 정의 + latency 시뮬레이션 | 유효 shape/range 내 random 출력 | configurable sleep | `opsight/fm/mock_stub.py` (plan_1.1.5) |
+| 2 | **Rule-based Mock** | Realistic I/O로 agent reasoning 검증 | 신호 통계 기반 plausible 출력 (ABP trend, NaN-ratio 품질, correlation 기반 consistency 등) | real-FM 예상 latency와 일치 | `opsight/fm/mock_rule_based.py` (plan_1.6.5) |
+| 3 | **Light ML Mock** *(optional)* | 학습된 모델로 real-FM proxy 제공 | Stage 1.4 baseline (Logistic / XGBoost / LSTM)을 Protocol 뒤에서 wrapping | real-baseline inference | `opsight/fm/mock_light_ml.py` (plan_1.7.5) |
 
 **필수 (Mandatory)**: Tier 1 + Tier 2. **선택 (Optional)**: Tier 3 — baseline을 재사용하므로 추가 비용이 낮다. 시간 여유 시 수행한다.
 
 ### Interface Protocol
 
-`vitalagent/fm/interface.py`에 정의되는 `runtime_checkable` `typing.Protocol`:
+`opsight/fm/interface.py`에 정의되는 `runtime_checkable` `typing.Protocol`:
 
 ```python
 from typing import Protocol, runtime_checkable
@@ -93,7 +93,7 @@ class BiosignalFMInterface(Protocol):
     ) -> AnomalyResult: ...
 ```
 
-모든 Result dataclass (`HypotensionResult`, `ArrestResult`, `QualityResult`, `ConsistencyResult`, `TrendResult`, `ForecastResult`, `AnomalyResult`)는 `vitalagent/fm/interface.py` (또는 co-located `vitalagent/fm/result_types.py`)에 정의된다.
+모든 Result dataclass (`HypotensionResult`, `ArrestResult`, `QualityResult`, `ConsistencyResult`, `TrendResult`, `ForecastResult`, `AnomalyResult`)는 `opsight/fm/interface.py` (또는 co-located `opsight/fm/result_types.py`)에 정의된다.
 
 모든 mock과 real FM은 본 Protocol을 **반드시** 구현해야 한다. Agent code는 `BiosignalFMInterface`에만 의존하며 concrete class에 의존하지 않는다.
 
@@ -109,7 +109,7 @@ fm:
     seed: 42
 ```
 
-`vitalagent/fm/factory.py`:
+`opsight/fm/factory.py`:
 
 ```python
 def create_fm(config) -> BiosignalFMInterface:

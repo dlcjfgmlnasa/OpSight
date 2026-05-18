@@ -11,7 +11,7 @@
 
 - [ ] **[Priority: High]** 모든 EMR tool이 공유하는 **time-leakage guard** primitive를 정의한다.
   - 입력: LangGraph state로부터의 시뮬레이션 clock 값 `t`
-  - 출력: `vitalagent/tools/_leakage_guard.py` — `query_window_end > t`이면 명시적으로 실패하는 `assert_le(t, query_window_end)` 함수
+  - 출력: `opsight/tools/_leakage_guard.py` — `query_window_end > t`이면 명시적으로 실패하는 `assert_le(t, query_window_end)` 함수
   - 의존성: 없음
   - 참고: §13.2 No-data-leakage rule의 실효성 확보. 모든 EMR tool은 본 guard로 wrap.
 

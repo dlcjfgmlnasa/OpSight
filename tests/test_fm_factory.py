@@ -14,9 +14,9 @@ from __future__ import annotations
 
 import pytest
 
-from vitalagent.fm.factory import create_fm
-from vitalagent.fm.interface import BiosignalFMInterface
-from vitalagent.fm.mock_stub import StubBiosignalFM
+from opsight.fm.factory import create_fm
+from opsight.fm.interface import BiosignalFMInterface
+from opsight.fm.mock_stub import StubBiosignalFM
 
 
 def test_create_mock_stub_returns_protocol_instance() -> None:

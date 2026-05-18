@@ -15,7 +15,7 @@
 
 - 관련 ADR: `docs/decisions/ADR-012-surgery-specific-downstream-tasks.md` `[DECISION PENDING]`
 - 핵심 질문:
-  - FM downstream 13 task suite (general)와 VitalAgent task suite (OR-specific)를 분리하는 것이 적절한가?
+  - FM downstream 13 task suite (general)와 OpSight task suite (OR-specific)를 분리하는 것이 적절한가?
   - 제안한 Tier 1–4 구성 (5+3+2+3=13)이 임상적으로 적절한가?
 - 검토 자료: ADR-012 §Decision의 4-tier 표
 - Open question 5건은 ADR-012 §"Open questions" 참조
@@ -59,7 +59,7 @@
 - 관련 위치: `docs/project_brief.md §3` (FM context, 학습 약 2개월 후 완료 예정)
 - 핵심 질문:
   - 학습 진행 timeline 확인 — Stage 2 시작 시점 (Month 3)에 도착 가능한가?
-  - 학습 도중 architecture / objective 변경 가능성 — VitalAgent 측에서 대응 가능한가?
+  - 학습 도중 architecture / objective 변경 가능성 — OpSight 측에서 대응 가능한가?
   - 13 downstream task 중 미확정 4건 (T10–T13) 확정 가능성
 
 ### 7. Tier 0 (Current State Assessment) capability 채택 여부

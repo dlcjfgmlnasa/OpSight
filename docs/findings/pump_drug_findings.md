@@ -2,7 +2,7 @@
 
 > 2026-05-17. Cache snapshot 2026-05-16 (`docs/notebooks/_cache/{cases,trks}.csv`).
 > Companion script: `docs/notebooks/01_pump_drug_exploration.py`.
-> 본 문서는 plan_1.1 본격 작업이 아닌 **VitalAgent intervention-response 자동화 feasibility** 사전 탐색 산출물이다.
+> 본 문서는 plan_1.1 본격 작업이 아닌 **OpSight intervention-response 자동화 feasibility** 사전 탐색 산출물이다.
 
 ## 0. 한 줄 요약 (TL;DR)
 
@@ -236,7 +236,7 @@ Output (list[dict]):
 - Fluid / transfusion 도 동일하게 case-level summary 만 존재.
 
 **제안 표현 (영문, paper draft 용)**:
-> *VitalAgent automatically detects continuous vasoactive infusion changes from the syringe-pump record (Orchestra channel; ~5% of cohort). For interventions logged only at the case-level (IV bolus vasopressors, fluid administration, transfusion), VitalAgent supports clinician annotation during the simulated real-time loop and retrospective evaluation against case-level ground truth.*
+> *OpSight automatically detects continuous vasoactive infusion changes from the syringe-pump record (Orchestra channel; ~5% of cohort). For interventions logged only at the case-level (IV bolus vasopressors, fluid administration, transfusion), OpSight supports clinician annotation during the simulated real-time loop and retrospective evaluation against case-level ground truth.*
 
 ## 7. `[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]` 항목
 
