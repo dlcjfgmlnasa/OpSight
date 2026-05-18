@@ -1,0 +1,25 @@
+# OpSight runtime + test dependencies
+# Install: python -m venv .venv && .venv/Scripts/pip install -r requirements.txt
+
+# Core
+numpy
+pandas
+pyarrow
+pyyaml
+pydantic>=2
+
+# LangGraph agent
+langgraph
+
+# LLM client (OpenAI-compatible — vLLM endpoints)
+openai
+
+# Biosignal / VitalDB
+vitaldb
+neurokit2
+
+# ML
+torch
+
+# Testing
+pytest

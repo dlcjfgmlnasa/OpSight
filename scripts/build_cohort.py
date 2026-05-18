@@ -1,5 +1,5 @@
-"""Build VitalAgent cohort manifest (plan_1.2 산출물).
-VitalAgent cohort manifest 빌드 스크립트 (plan_1.2 산출물).
+"""Build OpSight cohort manifest (plan_1.2 산출물).
+OpSight cohort manifest 빌드 스크립트 (plan_1.2 산출물).
 
 End-to-end pipeline:
   1. Read cases.csv + trks.csv (cache 우선, fallback to VitalDB CSV endpoint)
@@ -460,7 +460,7 @@ def write_cohort_stats_md(
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Build VitalAgent cohort manifest")
+    ap = argparse.ArgumentParser(description="Build OpSight cohort manifest")
     ap.add_argument("--cache-only", action="store_true",
                     help="cache 만 사용 (network fetch 안 함)")
     ap.add_argument("--exclude-pediatric", action="store_true",

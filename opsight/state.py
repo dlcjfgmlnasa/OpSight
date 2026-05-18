@@ -65,7 +65,7 @@ class BriefRecord(BaseModel):
 
 
 class AgentState(BaseModel):
-    """Mutable LangGraph state for VitalAgent / VitalAgent LangGraph state.
+    """Mutable LangGraph state for OpSight / OpSight LangGraph state.
 
     Pydantic ``BaseModel`` for typed validation. State is intended to be
     *replaced* by node functions returning a new ``AgentState`` (functional

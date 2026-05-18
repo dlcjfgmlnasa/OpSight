@@ -1,5 +1,5 @@
-"""Run dual-mode VitalAgent graph on a real VitalDB case (a-option script).
-실제 VitalDB case 로 dual-mode VitalAgent graph 실행 (a-option).
+"""Run dual-mode OpSight graph on a real VitalDB case (a-option script).
+실제 VitalDB case 로 dual-mode OpSight graph 실행 (a-option).
 
 End-to-end demo:
   1. manifest 에서 case_id 선택 (or CLI arg)
