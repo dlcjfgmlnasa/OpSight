@@ -252,7 +252,7 @@ def compute_artifact_stats(
     """Sample artifact rate per modality for the first ``max_cases`` cases.
     첫 ``max_cases`` case 에 대한 modality 별 artifact 비율.
 
-    `[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]` — physiological range 임계.
+    `[CLINICIAN-REVIEW: 의료진 검토 필요]` — physiological range 임계.
 
     Loads each case via vitaldb at interval=1.0s; counts samples outside the
     physiological range defined in opsight.preprocessing.SIGNAL_CONFIGS
@@ -351,7 +351,7 @@ def write_cohort_stats_md(
     lines.append(f"| Pediatric (`age < 18`) | {'EXCLUDED' if exclude_pediatric else 'INCLUDED (default)'} |")
     lines.append(f"| `ASA = 6` | {'EXCLUDED' if exclude_asa6 else 'INCLUDED (default)'} |")
     lines.append("")
-    lines.append("`[DECISION PENDING]` `[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]` —")
+    lines.append("`[DECISION PENDING]` `[CLINICIAN-REVIEW: 의료진 검토 필요]` —")
     lines.append("Pediatric / ASA=6 inclusion 은 회의 후 결정. 본 manifest 는 *default (둘 다 INCLUDE)* 기반.")
     lines.append("")
     lines.append("## 1. Cohort 규모")
@@ -422,7 +422,7 @@ def write_cohort_stats_md(
     lines.append("- Pediatric / ASA=6 default 적용 — 회의 결정 후 본 stats 재생성 필요 시 `--exclude-pediatric` / `--exclude-asa6` flag 사용.")
     lines.append("- `surgery_type == 'other'` 비율 — VitalDB `department` 가 4 표준 외 값을 가지면 발생. 본 dataset (2026-05-16 snapshot) 은 4 department 만.")
     lines.append("")
-    lines.append("[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요] — surgery_type 분포의 임상적 타당성, ABP 가용성 편차 해석.")
+    lines.append("[CLINICIAN-REVIEW: 의료진 검토 필요] — surgery_type 분포의 임상적 타당성, ABP 가용성 편차 해석.")
 
     # ── Artifact stats (Sprint 6 Task D) ──
     if artifact_stats is not None and len(artifact_stats) > 0:
@@ -432,7 +432,7 @@ def write_cohort_stats_md(
         lines.append(f"> 첫 {int(artifact_stats['n_cases_sampled'].max())} case sample 기반. "
                      "Physiological range 임계는 `opsight/preprocessing/signal_config.py` 의 `SIGNAL_CONFIGS`.")
         lines.append("> `out_of_range_ratio` = valid sample 중 physiological_min/max 범위 밖 비율.")
-        lines.append("> `[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]` — range 임계의 임상 적절성.")
+        lines.append("> `[CLINICIAN-REVIEW: 의료진 검토 필요]` — range 임계의 임상 적절성.")
         lines.append("")
         lines.append("| modality | n_cases | nan_ratio mean | nan p95 | OOR ratio mean | OOR p95 | OOR max |")
         lines.append("|----------|---------|----------------|---------|----------------|---------|---------|")

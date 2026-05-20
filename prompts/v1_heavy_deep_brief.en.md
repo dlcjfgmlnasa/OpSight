@@ -89,7 +89,7 @@ Hypotension risk has risen to 0.82 at a 5-minute horizon with a consistent
 downward MAP trend. Whether to titrate vasopressors, adjust fluid balance,
 or modulate anesthetic depth may warrant clinician judgment. This brief
 is a decision-support aid, not a prescription.
-[CLINICIAN-REVIEW: Group of Prof. Lee HC review required]
+[CLINICIAN-REVIEW: clinician review required]
 
 [Limitations]
 This brief is based on mock FM (rule_based tier) output, with several EMR
@@ -97,7 +97,7 @@ tools returning stub data (anesthetics, fluids). The similar-trajectory
 and intervention-response prediction tools (#13, #14) are unimplemented.
 This brief does not replace clinical judgment and should be reviewed by
 the clinician before use.
-[CLINICIAN-REVIEW: Group of Prof. Lee HC review required]
+[CLINICIAN-REVIEW: clinician review required]
 ```
 
 ### Absolute constraints
@@ -124,4 +124,4 @@ Append `[[v1_clinical_fact_guard.en.md]]` content.
 |---------|------|--------|
 | v1 | 2026-05-17 | Initial — English variant for plan_1.6 |
 
-[CLINICIAN-REVIEW: Group of Prof. Lee HC review required]
+[CLINICIAN-REVIEW: clinician review required]

@@ -153,19 +153,33 @@ TOOLS: Final[dict[str, ToolSpec]] = {
     "query_anesthesia_drugs": ToolSpec(
         name="query_anesthesia_drugs",
         category="emr",
-        description="Query anesthesia drugs in a time window (STUB).",
+        description=(
+            "Query main anesthetic drugs (remifentanil / propofol / sevoflurane) "
+            "in a time window from Orchestra/Primus tracks."
+        ),
         fn=tool_query_anesthesia_drugs,
+        needs_signal=True,
     ),
     "query_vasoactive_drugs": ToolSpec(
         name="query_vasoactive_drugs",
         category="emr",
-        description="Query vasoactive drugs in a time window (STUB).",
+        description=(
+            "Query vasoactive drugs in a time window (hybrid — ADR-021). "
+            "Orchestra/* infusion channels report track-based `events`; when no "
+            "infusion is active, `unobservable_bolus_window=true` flags that "
+            "manual bolus push is unobservable (empty events != confirmed-absent)."
+        ),
         fn=tool_query_vasoactive_drugs,
+        needs_signal=True,
     ),
     "query_fluid_blood": ToolSpec(
         name="query_fluid_blood",
         category="emr",
-        description="Query fluids / blood products in a time window (STUB).",
+        description=(
+            "Query fluids / blood products — *not streamable* in VitalDB "
+            "(per-event timestamps absent; case-end aggregates only). "
+            "Returns empty result with honest reason marker."
+        ),
         fn=tool_query_fluid_blood,
     ),
     "query_surgery_progress": ToolSpec(
@@ -261,8 +275,9 @@ TOOLS: Final[dict[str, ToolSpec]] = {
         name="summarize_current_state",
         category="signal_access",
         description=(
-            "Integrated current state assessment (rule-based STUB; "
-            "Tier 0 #14-16 wrap pending ADR-014). Mandatory conditional "
+            "Integrated current state assessment (rule-based threshold path). "
+            "ADR-018: rule-based is the accepted Phase 1 implementation; "
+            "ADR-014 Tier 0 supervised head deferred. Mandatory conditional "
             "phrasing + [CLINICIAN-REVIEW] marker."
         ),
         fn=tool_summarize_current_state,
@@ -272,14 +287,24 @@ TOOLS: Final[dict[str, ToolSpec]] = {
 
 
 SHALLOW_TOOL_NAMES: Final[tuple[str, ...]] = (
+    # FM-based risk forecast (light)
     "predict_hypotension",
     "predict_cardiac_arrest",
     "assess_signal_quality",
     "cross_modal_consistency",
     "anomaly_score",
+    # ADR-018 — Current-state assessment (rule-based, deterministic)
+    "summarize_current_state",
+    # ADR-018 — Cheap EMR context for narration grounding
+    "query_surgery_progress",
+    "query_vasoactive_drugs",
 )
-"""5 quick tools used by the shallow loop (project_brief §6.1).
-Shallow loop가 호출하는 5개 quick tool (project_brief §6.1).
+"""Shallow-loop tool sweep (project_brief §6.1; ADR-018 expanded 5 → 8).
+
+Shallow loop가 호출하는 8개 tool (ADR-018).
+- FM forecast 5개: hypotension / arrest risk + signal quality / cross-modal / anomaly
+- Rule-based 현재 상태 1개: summarize_current_state (Tool 21)
+- Cheap EMR context 2개: surgery_progress (Tool 11) + vasoactive_drugs (Tool 9)
 """
 
 

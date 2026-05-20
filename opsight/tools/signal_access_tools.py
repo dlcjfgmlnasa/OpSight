@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from opsight.tools._leakage_guard import leakage_guard as _shared_leakage_guard
 from opsight.tools.envelope import ToolError, ToolRequest, ToolResponse
 from opsight.tools.signal_access_types import (
     BaselineComparison,
@@ -73,6 +74,12 @@ _TEMP_ALIASES = ("BT", "Solar8000/BT", "core_temp", "TEMP")
 _SBP_ALIASES = ("SBP", "Solar8000/ART_SBP", "Solar8000/NIBP_SBP")
 _DBP_ALIASES = ("DBP", "Solar8000/ART_DBP", "Solar8000/NIBP_DBP")
 _RR_ALIASES = ("RR", "Solar8000/VENT_RR", "Solar8000/RR_CO2")
+# CVP / PAP — brief §1 6 modality (waveform CVP via SNUADC, numeric via Solar8000/EV1000).
+_CVP_ALIASES = ("CVP", "CVP_MEAN", "SNUADC/CVP", "Solar8000/CVP", "EV1000/CVP")
+_PAP_ALIASES = (
+    "PAP_MBP", "PAP_SBP", "PAP_DBP",
+    "Solar8000/PA_MBP", "Solar8000/PA_SBP", "Solar8000/PA_DBP",
+)
 
 
 def _find_first(signal: dict[str, Any], aliases: tuple[str, ...]) -> tuple[str, np.ndarray] | None:
@@ -110,26 +117,20 @@ def _leakage_guard(
 ) -> ToolResponse | None:
     """Refuse queries whose window extends past ``clock.now_s``.
     ``clock.now_s`` 이후를 포함하는 window 조회 거부.
+
+    Thin wrapper over the shared ``opsight.tools._leakage_guard`` primitive
+    (plan_1.3 task 1) that preserves the Signal Access ``{"category":
+    "signal_access"}`` quality_meta marker and ``ToolError.extra`` shape.
+    공유 leakage guard primitive 의 thin wrapper — signal_access marker + extra
+    shape 보존.
     """
-    if query_window_end_s > clock.now_s:
-        return ToolResponse(
-            case_id=request.case_id,
-            sim_time_s=request.sim_time_s,
-            tool_name=request.tool_name,
-            args=dict(request.args),
-            error=ToolError(
-                type="leakage_violation",
-                message=(
-                    f"query_window_end_s={query_window_end_s} exceeds "
-                    f"clock.now_s={clock.now_s}"
-                ),
-                extra={"query_window_end_s": query_window_end_s,
-                       "clock_now_s": clock.now_s},
-            ),
-            quality_meta={"category": "signal_access"},
-            latency_ms=0.0,
-        )
-    return None
+    return _shared_leakage_guard(
+        request,
+        clock,
+        query_window_end_s,
+        quality_meta={"category": "signal_access"},
+        include_extra=True,
+    )
 
 
 def _error_response(
@@ -466,10 +467,26 @@ def tool_assess_variability(
         metrics = _ppg_metrics(arr)
         meta = {"modality": modality, "modality_class": "PPG",
                 "implementation": "numpy"}
+    # CVP / PAP → BPV-style variability (SD + ARV).
+    # CVP respiratory swing / PAP pulsatility 모두 BPV metric으로 1차 근사.
+    # [CLINICIAN-REVIEW: 의료진 검토 필요] — CVP는 호흡 swing 분리,
+    # PAP는 pulmonary HTN context와 함께 해석 필요.
+    elif modality in _CVP_ALIASES or modality in _PAP_ALIASES:
+        if modality not in signal:
+            return _error_response(
+                request, "invalid_args",
+                f"modality {modality!r} not in signal",
+                (time.perf_counter() - t0) * 1000.0,
+            )
+        arr = _to_numpy(signal[modality])
+        metrics = _bpv_metrics(arr)
+        modality_class = "CVP" if modality in _CVP_ALIASES else "PAP"
+        meta = {"modality": modality, "modality_class": modality_class,
+                "implementation": "numpy"}
     else:
         return _error_response(
             request, "invalid_args",
-            f"modality {modality!r} not supported (use HR / MAP / ABP / PPG family)",
+            f"modality {modality!r} not supported (use HR / MAP / ABP / PPG / CVP / PAP family)",
             (time.perf_counter() - t0) * 1000.0,
         )
 
@@ -606,7 +623,7 @@ def tool_compare_to_baseline(
 
 # Phrasing enforcement: 단정 어조 ban + [CLINICIAN-REVIEW] marker 강제.
 # `tool 21 stub.task7` (plan_1.3.5) 와 brief §13.1 (Clinical Fact Guard) 일관.
-_CLINICIAN_REVIEW_MARKER = "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+_CLINICIAN_REVIEW_MARKER = "[CLINICIAN-REVIEW: 의료진 검토 필요]"
 
 # Lit-standard threshold (heuristic; 임상의 검토 필요).
 _MAP_NORMAL_LOW = 65.0
@@ -623,16 +640,20 @@ def tool_summarize_current_state(
     clock: SimClock,
     signal: dict[str, torch.Tensor],
 ) -> ToolResponse:
-    """STUB — synthesize current state from tools 17–20 (rule-based).
-    STUB — 17–20 출력을 합성한 rule-based 현재 상태 평가.
+    """Synthesize current state from tools 17–20 (rule-based threshold path).
+    17–20 출력을 합성한 rule-based 현재 상태 평가.
 
     ⚠️ Phrasing enforcement (ADR-016, brief §13.1):
         - Conditional phrasing only ("X 가능성을 시사함")
         - No diagnostic assertions, no dose recommendations
-        - [CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요] marker MANDATORY
+        - [CLINICIAN-REVIEW: 의료진 검토 필요] marker MANDATORY
 
-    Full implementation: Tier 0 #14–16 wrap (ADR-014, DECISION PENDING).
-    Full 구현: ADR-014 Accepted 시 Tier 0 supervised head 호출로 교체.
+    ADR-018 (Proposed): rule-based threshold path is the accepted Phase 1
+    implementation. ADR-014 Tier 0 supervised head (#14) is deferred — current
+    numerics-based threshold synthesis is sufficient for §[Signal status]
+    grounding. Waveform-derived state is in scope of ADR-019.
+    ADR-018: rule-based threshold path 가 Phase 1. ADR-014 supervised head
+    는 deferred — numerics threshold 합성이 §[Signal status] grounding 에 충분.
     """
     t0 = time.perf_counter()
     err = _leakage_guard(request, clock, float(request.sim_time_s))
@@ -726,8 +747,10 @@ def tool_summarize_current_state(
         key_concerns=concerns,
         overall_assessment=overall,
         meta={
-            "tier0_status": "stub",
-            "stub_rule": "rule_based_threshold_synthesis",
+            # ADR-018: stub → rule_based. Logic is complete; Tier 0 supervised
+            # head (ADR-014 #14) is deferred and currently not required.
+            "tier0_status": "rule_based",
+            "rule": "rule_based_threshold_synthesis",
             "vitals_source": v.get("meta", {}),
         },
     )
@@ -743,7 +766,7 @@ def tool_summarize_current_state(
     return _ok(
         request, result, (time.perf_counter() - t0) * 1000.0,
         quality_meta={
-            "tier0_status": "stub",
+            "tier0_status": "rule_based",
             "clinical_review_required": True,
         },
     )

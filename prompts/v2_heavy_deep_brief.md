@@ -50,7 +50,12 @@
 
 [Assessment confidence]
     HIGH / MEDIUM / LOW / UNRELIABLE + 이유.
-    Source: tool 3 + tool 4
+    Source: tool 3 + tool 4 + tool 1/2 meta (predicted_from, fallback_chain)
+    Confidence 결정 규칙 (Scope 2/3):
+      - tool 1/2.meta.predicted_from == "abp" + quality 양호 → HIGH 또는 MEDIUM
+      - tool 1.meta.predicted_from == "hr_compensation_proxy" → 최대 MEDIUM ("ABP 미가용, HR 기반 추정")
+      - tool 1.meta.reason == "no_hemodynamic_proxy" → LOW ("ABP/HR 미가용, PPG/ECG presence 만")
+      - tool 5/6/7.meta.reason == "nan_burden_rejected" 가 다수 → LOW / UNRELIABLE
 
 [Risk evaluation]
     주요 risk score 와 horizon. 각 정량 값은 tool 결과에서 그대로.
@@ -76,7 +81,12 @@
 
 [Limitations]
     신호 품질 한계 / 누락 modality / Mock FM tier / 평가 신뢰도 caveat.
-    Source: 모든 tool 의 quality_meta
+    Source: 모든 tool 의 quality_meta + meta.reason
+    Auto-include 규칙 (Scope 3) — 다음 중 해당하는 항목은 반드시 명시:
+      - tool 1/2 의 predicted_from != "abp" → "ABP 미가용으로 HR 또는 indirect proxy 사용; 진짜 FM 도착 시 재평가 필요"
+      - tool 1/2 의 reason == "no_hemodynamic_proxy" → "ABP/HR 모두 미가용; PPG/ECG presence 만 보고, hemodynamic 평가 실질 불가"
+      - tool 5/6/7 중 어느 것이라도 reason == "nan_burden_rejected" → "induction phase 또는 sensor artifact 로 X% 이상 NaN; 해당 modality 분석 신뢰 X"
+      - tool 4 (cross_modal_consistency) reason == "too_few_finite_samples" → "modality 페어의 finite 윈도우 부족; consistency 평가 불가"
 ```
 
 ### Token / 길이 제약
@@ -101,7 +111,7 @@
 
 **Tool 21 `summarize_current_state`** — `§[Surgery context]` 의 통합 state source. ⚠️ **반드시 다음 규칙 준수**:
 
-1. `overall_assessment` 값을 *그대로* 인용 (LLM 이 paraphrase 금지) — 이미 `[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]` marker 포함.
+1. `overall_assessment` 값을 *그대로* 인용 (LLM 이 paraphrase 금지) — 이미 `[CLINICIAN-REVIEW: 의료진 검토 필요]` marker 포함.
 2. `marker` 가 보존되도록 인용 끝까지 출력. 누락 시 brief faithfulness 평가 실패.
 3. `hemodynamic_state` / `anesthesia_state` / `respiratory_state` enum 값은 그대로 사용 ("stable" / "caution_low_pressure" / "adequate_range" 등).
 4. `key_concerns` list 의 phrase ("X 가능성을 시사함" 형식) 를 paraphrase 하지 말고 그대로 인용.
@@ -146,9 +156,10 @@ tool_results:
                               uncertainty: [2.0, 2.8, 3.5, 4.2, 4.8]}
   anomaly_score:             {score: 0.45}
   # EMR (8–12)
-  query_anesthesia_drugs:    {drugs: [{name: remifentanil, amount: 0.10, unit: mcg/kg/min}, ...]}
-  query_vasoactive_drugs:    {drugs: []}
-  query_fluid_blood:         {intake_cumulative: 1800, ebl: 250, urine: 320}
+  query_anesthesia_drugs:    {drugs: [{name: remifentanil, ce: 3.5, mean_rate: 8.0, ...}], source: signal_lookup}
+  query_vasoactive_drugs:    {events: [], unobservable_bolus_window: true,
+                              meta: {event_capture_mode: stub_bolus_unobservable, clinical_review_required: true}}  # ADR-021
+  query_fluid_blood:         {fluids: [], blood_products: [], reason: fluid_blood_not_streamable}  # ADR-021
   query_surgery_progress:    {phase: maintenance, elapsed_min: 90.5}
   query_patient_baseline:    {age: 62, sex: M, asa: 2, baseline_bp: "130/80"}
   # Knowledge (13–14) — stub
@@ -156,7 +167,7 @@ tool_results:
   intervention_response_prediction: {response_distribution: {...}, n_reference_cases: 0}
   # Auxiliary (15–16)
   surgery_context_awareness: {common_events: ["maintenance hypotension", "blood loss related"],
-                              phase_hint: "복부 수술 maintenance ... [CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]",
+                              phase_hint: "복부 수술 maintenance ... [CLINICIAN-REVIEW: 의료진 검토 필요]",
                               meta: {source: yaml, yaml_version: v1}}
   quality_aware_synthesis:   {fused_value: 0.65, effective_quality: 0.75}
   # Signal Access (17–21) ★
@@ -175,7 +186,7 @@ tool_results:
                               anesthesia_state: adequate_range,
                               respiratory_state: stable,
                               key_concerns: ["MAP 62 mmHg 가 65 mmHg 미만 가능성을 시사함"],
-                              overall_assessment: "1건의 관찰 항목이 있으며 임상의의 판단이 필요할 수 있다. [CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]",
+                              overall_assessment: "1건의 관찰 항목이 있으며 임상의의 판단이 필요할 수 있다. [CLINICIAN-REVIEW: 의료진 검토 필요]",
                               meta: {tier0_status: stub}}
 ```
 
@@ -188,7 +199,7 @@ tool_results:
 stub): hemodynamic_state = caution_low_pressure, anesthesia_state =
 adequate_range, respiratory_state = stable. 복부 수술 maintenance 에서 혈역학
 변동은 수액 balance / 출혈 / 마취제 effect-site 변화와 관련 있을 수 있다.
-[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]
+[CLINICIAN-REVIEW: 의료진 검토 필요]
 
 [Signal status]
 현재 vital — MAP 62 mmHg, SBP 88 mmHg, DBP 48 mmHg, HR 78 bpm, RR 12 /min,
@@ -229,7 +240,7 @@ Similar case 검색 tool (find_similar_cases) 가 본 prototype 단계에서 미
 저혈압 risk 가 5분 horizon 에서 0.82 로 상승 추세를 보이며, MAP 하강이 일관되게
 관찰되고 baseline 대비 −32.6% 변화. Vasopressor / 수액 / 마취 심도 조정 여부는
 임상의의 판단이 필요할 수 있다. 본 brief 는 의사 결정 *보조* 자료이며 처방
-권고가 아니다. [CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]
+권고가 아니다. [CLINICIAN-REVIEW: 의료진 검토 필요]
 
 [Limitations]
 본 brief 는 mock FM (rule_based tier) 출력에 기반하며, EMR tool 중 fluid/blood
@@ -237,7 +248,7 @@ Similar case 검색 tool (find_similar_cases) 가 본 prototype 단계에서 미
 response 예측 tool (13, 14) 은 stub. 현재 상태 평가 (tool 21) 는 stub
 (rule-based 휴리스틱) — ADR-014 의 Tier 0 supervised head 합류 시 교체 예정.
 본 brief 는 임상 판단의 대체가 아니며 임상의 검토 후 활용해야 한다.
-[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]
+[CLINICIAN-REVIEW: 의료진 검토 필요]
 ```
 
 ### 절대 금지
@@ -260,6 +271,8 @@ response 예측 tool (13, 14) 은 stub. 현재 상태 평가 (tool 21) 는 stub
 5. `[Limitations]` 에 stub tool (13 / 14 / 21) + mock FM tier 명시?
 6. 단정 phrase (`X 이다`, `진단`, `처방`) 발견 시 `X 가능성을 시사함` 으로 재서술?
 7. `[CLINICIAN-REVIEW]` marker 가 `[Recommendations]` + `[Limitations]` 최소 2회 출현?
+8. **Scope 3 — fallback awareness**: tool 1/2 meta.predicted_from 확인했는가? "abp" 가 아니면 `[Assessment confidence]` 가 MEDIUM 이하 + `[Limitations]` 에 자동 sentence 포함했는가?
+9. **Scope 3 — NaN-burden**: tool 5/6/7 중 어느 것의 meta.reason 이 "nan_burden_rejected" 이면 `[Limitations]` 에 해당 modality 명시했는가?
 
 ### 영문 입력 / 출력 변형 (bilingual switch)
 
@@ -282,6 +295,7 @@ User context 에 `language=en` 가 명시되면 영문 brief. Section 헤더는 
 | Version | Date | Change |
 |---------|------|--------|
 | v1 | 2026-05-17 | Initial — 16-tool 기준 |
-| **v2** | **2026-05-18** | **21-tool 반영 (ADR-016 Signal Access 17–21). Tool 21 phrasing rule enforce. Worked-through 예시 갱신.** |
+| v2 | 2026-05-18 | 21-tool 반영 (ADR-016 Signal Access 17–21). Tool 21 phrasing rule enforce. Worked-through 예시 갱신. |
+| **v2.1** | **2026-05-19** | **Scope 3 — fallback awareness**. `[Assessment confidence]` 결정 규칙에 `predicted_from` 인용. `[Limitations]` auto-include 규칙 (predicted_from != abp, no_hemodynamic_proxy, nan_burden_rejected, too_few_finite_samples). Self-review checklist 에 항목 2개 (#8, #9) 추가. |
 
-[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요] — 본 prompt + 예시 brief 의 임상 phrasing 적절성, Tool 17–21 인용 패턴.
+[CLINICIAN-REVIEW: 의료진 검토 필요] — 본 prompt + 예시 brief 의 임상 phrasing 적절성, Tool 17–21 인용 패턴.

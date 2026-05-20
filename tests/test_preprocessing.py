@@ -30,7 +30,11 @@ from opsight.preprocessing import (
 
 
 def test_signal_config_registry_has_priority_modalities():
-    for k in ("ABP", "MAP", "HR", "PPG", "ECG_II", "SpO2", "EtCO2", "BIS", "BT"):
+    for k in (
+        "ABP", "MAP", "HR", "PPG", "ECG_II", "SpO2", "EtCO2", "BIS", "BT",
+        # brief §1 6 modality — CVP / PAP family
+        "CVP", "CVP_MEAN", "PAP_MBP", "PAP_SBP", "PAP_DBP",
+    ):
         assert k in SIGNAL_CONFIGS, f"missing config: {k}"
         cfg = SIGNAL_CONFIGS[k]
         assert isinstance(cfg, SignalConfig)
@@ -49,6 +53,15 @@ def test_config_alias_lookup_resolves_to_canonical():
     assert config_for_modality("BIS/BIS").name == "BIS"
     # Solar8000/PLETH_SPO2 → SpO2
     assert config_for_modality("Solar8000/PLETH_SPO2").name == "SpO2"
+    # CVP family — waveform vs numeric routed separately
+    assert config_for_modality("SNUADC/CVP").name == "CVP"
+    assert config_for_modality("SNUADC/CVP").is_waveform is True
+    assert config_for_modality("Solar8000/CVP").name == "CVP_MEAN"
+    assert config_for_modality("EV1000/CVP").name == "CVP_MEAN"
+    # PAP family — Solar8000 numerics
+    assert config_for_modality("Solar8000/PA_MBP").name == "PAP_MBP"
+    assert config_for_modality("Solar8000/PA_SBP").name == "PAP_SBP"
+    assert config_for_modality("Solar8000/PA_DBP").name == "PAP_DBP"
 
 
 def test_config_alias_unknown_returns_none():

@@ -195,11 +195,49 @@ def test_tool19_ppg_returns_svv_metrics(clock):
 
 
 def test_tool19_unsupported_modality(clock):
+    # Genuinely unsupported modality (CardioQ device — < 1% cohort, not modeled).
     r = tool_assess_variability(
-        _req("assess_variability", {"modality": "PA_MBP"}), clock, {},
+        _req("assess_variability", {"modality": "CardioQ/CO"}), clock, {},
     )
     assert not r.ok
     assert r.error.type == "invalid_args"
+
+
+def test_tool19_cvp_returns_bpv_metrics(clock):
+    """CVP family routes to BPV-style metrics (SD/ARV) — brief §1 modality."""
+    rng = np.random.default_rng(0)
+    sig = {
+        "Solar8000/CVP": torch.from_numpy(
+            (8.0 + rng.normal(0, 1.5, 60)).astype(np.float32)
+        ),
+    }
+    r = tool_assess_variability(
+        _req("assess_variability", {"modality": "Solar8000/CVP"}), clock, sig,
+    )
+    assert r.ok
+    m = r.result["metrics"]
+    assert "SD_mmHg" in m
+    assert "ARV_mmHg" in m
+    assert m["SD_mmHg"] is not None and m["SD_mmHg"] > 0
+    assert r.result["meta"]["modality_class"] == "CVP"
+
+
+def test_tool19_pap_returns_bpv_metrics(clock):
+    """PAP family routes to BPV-style metrics — brief §1 modality."""
+    rng = np.random.default_rng(0)
+    sig = {
+        "Solar8000/PA_MBP": torch.from_numpy(
+            (18.0 + rng.normal(0, 2.0, 60)).astype(np.float32)
+        ),
+    }
+    r = tool_assess_variability(
+        _req("assess_variability", {"modality": "Solar8000/PA_MBP"}), clock, sig,
+    )
+    assert r.ok
+    m = r.result["metrics"]
+    assert "SD_mmHg" in m
+    assert "ARV_mmHg" in m
+    assert r.result["meta"]["modality_class"] == "PAP"
 
 
 def test_tool19_missing_signal_data(clock):
@@ -287,7 +325,10 @@ def test_tool20_modality_absent(clock):
 _BANNED_PHRASES = ("이다.", "진단", "처치", "투여", "권고")
 
 
-def test_tool21_stub_synthesizes_from_vitals(clock):
+def test_tool21_rule_based_synthesizes_from_vitals(clock):
+    """Tool 21 rule-based threshold path (ADR-018: stub → rule_based).
+    Tool 21 rule-based threshold path (ADR-018: stub → rule_based 로 label 변경).
+    """
     sig = _synth_signal_full()
     r = tool_summarize_current_state(
         _req("summarize_current_state", {}), clock, sig,
@@ -297,7 +338,10 @@ def test_tool21_stub_synthesizes_from_vitals(clock):
     assert res["hemodynamic_state"] == "stable"  # MAP 80 normal
     assert res["anesthesia_state"] == "adequate_range"  # BIS 50 in 40-60
     assert res["respiratory_state"] == "stable"  # SpO2 98 normal
-    assert res["meta"]["tier0_status"] == "stub"
+    # ADR-018: tier0_status renamed stub → rule_based (logic unchanged).
+    # ADR-018: tier0_status 가 stub → rule_based 로 변경 (로직은 동일).
+    assert res["meta"]["tier0_status"] == "rule_based"
+    assert r.quality_meta["tier0_status"] == "rule_based"
 
 
 def test_tool21_clinician_review_marker_mandatory(clock):
@@ -308,7 +352,7 @@ def test_tool21_clinician_review_marker_mandatory(clock):
         _req("summarize_current_state", {}), clock, sig,
     )
     assert r.ok
-    assert "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]" in r.result["overall_assessment"]
+    assert "[CLINICIAN-REVIEW: 의료진 검토 필요]" in r.result["overall_assessment"]
 
 
 def test_tool21_no_assertive_phrasing_in_output(clock):
@@ -349,7 +393,8 @@ def test_tool21_clinical_review_required_in_quality_meta(clock):
     )
     assert r.ok
     assert r.quality_meta["clinical_review_required"] is True
-    assert r.quality_meta["tier0_status"] == "stub"
+    # ADR-018: tier0_status renamed stub → rule_based.
+    assert r.quality_meta["tier0_status"] == "rule_based"
 
 
 def test_tool21_leakage_violation(clock):

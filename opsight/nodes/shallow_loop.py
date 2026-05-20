@@ -28,9 +28,14 @@ if TYPE_CHECKING:
     from opsight.trace import TraceWriter
 
 
-def _shallow_tool_args(name: str, modalities: list[str]) -> dict:
+def _shallow_tool_args(
+    name: str, state: AgentState, modalities: list[str]
+) -> dict:
     """Return the args dict for a shallow-loop tool call.
     Shallow loop tool 호출용 args dict 반환.
+
+    ADR-018: shallow sweep expanded 5 → 8 — added summarize_current_state (21),
+    query_surgery_progress (11), query_vasoactive_drugs (9).
     """
     if name == "predict_hypotension":
         return {"horizon_min": 5, "available_modalities": modalities}
@@ -45,6 +50,15 @@ def _shallow_tool_args(name: str, modalities: list[str]) -> dict:
         return {"modality_pair": [modalities[0] if modalities else "ABP", "ABP"]}
     if name == "anomaly_score":
         return {"modality": modalities[0] if modalities else "ABP"}
+    # ── ADR-018 additions ──
+    if name == "summarize_current_state":
+        return {}
+    if name == "query_surgery_progress":
+        return {"current_time": state.sim_time_s}
+    if name == "query_vasoactive_drugs":
+        # Last 5 min window (matches deep_brief convention).
+        # 최근 5분 window (deep_brief 와 동일).
+        return {"time_window": [max(0.0, state.sim_time_s - 300.0), state.sim_time_s]}
     raise ValueError(f"unknown shallow tool: {name}")
 
 
@@ -77,7 +91,7 @@ def run_shallow_loop(
     """
     tool_results: list[ToolResponse] = []
     for tool_name in SHALLOW_TOOL_NAMES:
-        args = _shallow_tool_args(tool_name, modalities)
+        args = _shallow_tool_args(tool_name, state, modalities)
         req = ToolRequest(
             case_id=state.case_id,
             sim_time_s=state.sim_time_s,
@@ -135,12 +149,30 @@ def run_shallow_loop(
                     )
                 )
 
+    # ADR-018: inject case_baseline as a synthetic tool result so the LLM sees
+    # patient context (age / sex / ASA / preop baseline) without changing the
+    # narrate() signature.
+    # ADR-018: case_baseline 을 합성 tool result 로 주입 — narrate() signature
+    # 변경 없이 LLM 이 환자 맥락 (age / sex / ASA / preop baseline) 을 볼 수
+    # 있게 함.
+    narration_inputs = list(tool_results)
+    if state.case_baseline is not None:
+        narration_inputs.insert(0, ToolResponse(
+            case_id=state.case_id,
+            sim_time_s=state.sim_time_s,
+            tool_name="case_baseline",
+            args={},
+            result=dict(state.case_baseline),
+            quality_meta={"source": "case_init_cache"},
+            latency_ms=0.0,
+        ))
+
     # LLM client — default placeholder; vLLM-backed swaps in via config (Sprint 6).
     # LLM client — 기본은 placeholder; vLLM 은 config 로 swap (Sprint 6).
     if llm_client is None:
-        narration = render_shallow_narration(tool_results)
+        narration = render_shallow_narration(narration_inputs)
     else:
-        narration = llm_client.narrate(tool_results)
+        narration = llm_client.narrate(narration_inputs)
     if trace is not None:
         trace.event("narration", {"text": narration}, sim_time_s=state.sim_time_s)
 

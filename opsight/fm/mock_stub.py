@@ -31,11 +31,11 @@ This tier exists ONLY to:
 
 Clinical Fact Guard (``docs/project_brief.md §13.1``): no field returned by
 this module asserts a clinical state. Any consumer who renders stub output
-to a clinician MUST mark it ``[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토
+to a clinician MUST mark it ``[CLINICIAN-REVIEW: 의료진 검토
 필요]`` or refuse to render entirely.
 임상 사실 가드 (``docs/project_brief.md §13.1``): 본 module이 반환하는
 어떤 field도 임상 상태를 단정하지 않는다. stub 출력을 임상의에게 렌더링하는
-consumer는 반드시 ``[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]``
+consumer는 반드시 ``[CLINICIAN-REVIEW: 의료진 검토 필요]``
 marker를 부착하거나 렌더링 자체를 거부해야 한다.
 
 Latency simulation (C2): configurable per-method sleep with optional jitter.

@@ -162,7 +162,7 @@ def test_surgery_context_loads_yaml_when_available(clock):
     assert resp.result["meta"]["yaml_version"] == "v1"
     # phase hint must include the CLINICIAN-REVIEW marker from yaml
     # phase hint 는 yaml 의 clinical_review marker 포함
-    assert "이형철 교수님 그룹 검토 필요" in resp.result["phase_hint"]
+    assert "의료진 검토 필요" in resp.result["phase_hint"]
 
 
 def test_surgery_context_yaml_covers_all_4_surgery_types(clock):

@@ -28,6 +28,8 @@ from opsight.nodes.deep_brief import run_deep_brief
 from opsight.nodes.shallow_loop import run_shallow_loop
 from opsight.signal_stream import SignalStream, stream_from_full_signal
 from opsight.state import AgentState
+from opsight.tools.envelope import ToolRequest
+from opsight.tools.registry import call_tool
 from opsight.triggers import should_escalate
 
 if TYPE_CHECKING:
@@ -92,6 +94,32 @@ def build_graph(
         # Legacy full-signal 을 stream 으로 wrap (downstream 일관성).
         signal_stream = stream_from_full_signal(signal)
 
+    def _case_init_node(state: AgentState) -> AgentState:
+        """Run once at graph entry — populate case_baseline cache (ADR-018).
+        그래프 진입 시 1회 실행 — case_baseline 캐시 채움 (ADR-018).
+
+        Calls ``query_patient_baseline`` (Tool 12) which has no time-window
+        leakage concern; result cached in ``state.case_baseline`` and
+        injected into every subsequent shallow / deep narration prompt.
+        Failure mode (tool error) → ``case_baseline`` remains ``None`` and
+        downstream prompts simply omit baseline context (graceful degrade).
+        """
+        req = ToolRequest(
+            case_id=state.case_id,
+            sim_time_s=state.sim_time_s,
+            tool_name="query_patient_baseline",
+            args={},
+        )
+        resp = call_tool("query_patient_baseline", req, fm=fm, clock=clock,
+                         signal=signal_stream.view_until(state.sim_time_s))
+        if trace is not None:
+            trace.event("case_init",
+                        {"ok": resp.ok,
+                         "baseline_keys": list((resp.result or {}).keys())},
+                        sim_time_s=state.sim_time_s)
+        baseline = resp.result if resp.ok and resp.result is not None else None
+        return state.model_copy(update={"case_baseline": baseline})
+
     def _shallow_node(state: AgentState) -> AgentState:
         # Advance the sim clock BEFORE running the shallow loop / shallow loop
         # 실행 전에 sim clock 진행.
@@ -146,9 +174,13 @@ def build_graph(
         return "shallow"
 
     graph: StateGraph = StateGraph(AgentState)
+    graph.add_node("case_init", _case_init_node)
     graph.add_node("shallow", _shallow_node)
     graph.add_node("deep", _deep_node)
-    graph.add_edge(START, "shallow")
+    # ADR-018: case_init runs once at START before the shallow tick loop.
+    # ADR-018: case_init 가 START 직후 1회 실행 후 shallow tick loop 진입.
+    graph.add_edge(START, "case_init")
+    graph.add_edge("case_init", "shallow")
     graph.add_conditional_edges(
         "shallow",
         _route,

@@ -144,7 +144,7 @@ def test_vllm_brief_routes_to_deep_endpoint_and_parses_9_sections(sample_tool_re
         "[Similar trajectory]\n"
         "TBD.\n\n"
         "[Recommendations]\n"
-        "임상의 판단 필요. [CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]\n\n"
+        "임상의 판단 필요. [CLINICIAN-REVIEW: 의료진 검토 필요]\n\n"
         "[Limitations]\n"
         "본 brief 는 placeholder. [CLINICIAN-REVIEW]\n"
     )
@@ -229,7 +229,7 @@ def test_parser_missing_sections_empty_string():
 def test_parser_preserves_clinician_review_marker():
     text = (
         "[Recommendations]\n"
-        "고려사항. [CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]\n"
+        "고려사항. [CLINICIAN-REVIEW: 의료진 검토 필요]\n"
     )
     out = _parse_9_section_brief(text)
     assert "[CLINICIAN-REVIEW" in out["Recommendations"]
@@ -246,6 +246,62 @@ def test_parser_ignores_unknown_section_headers():
     assert out["Risk evaluation"] == "B."
     # 9 canonical keys only
     assert "Unknown Section" not in out
+
+
+def test_parser_markdown_bold_headers():
+    """8B/70B often wrap headers in markdown bold (**[X]**) despite the prompt.
+    Parser must still extract all sections (Sprint 7.14 fix).
+    8B/70B 가 header 를 **[X]** 로 감싸도 parse 되어야 함 (Sprint 7.14).
+    """
+    text = (
+        "**[Surgery context]**\nGeneral, induction.\n\n"
+        "**[Signal status]**\nMAP unavailable.\n\n"
+        "**[Assessment confidence]**\nLOW.\n\n"
+        "**[Risk evaluation]**\nHypotension 0.00.\n\n"
+        "**[Evidence]**\nFlat trend.\n\n"
+        "**[Intraoperative context]**\nSevoflurane.\n\n"
+        "**[Similar trajectory]**\nTBD.\n\n"
+        "**[Recommendations]**\nMonitor. [CLINICIAN-REVIEW: clinician review required]\n\n"
+        "**[Limitations]**\nMock FM. [CLINICIAN-REVIEW: clinician review required]\n"
+    )
+    out = _parse_9_section_brief(text)
+    nonempty = sum(1 for v in out.values() if v.strip())
+    assert nonempty == 9, f"expected 9 sections, got {nonempty}: {out}"
+    assert out["Surgery context"] == "General, induction."
+    assert out["Assessment confidence"] == "LOW."
+    assert "[CLINICIAN-REVIEW" in out["Recommendations"]
+    assert "[CLINICIAN-REVIEW" in out["Limitations"]
+
+
+def test_parser_markdown_header_and_colon_variants():
+    """Tolerate '## [X]' and '[X]:' header decorations.
+    '## [X]' 와 '[X]:' 형식도 관용.
+    """
+    text = (
+        "## [Surgery context]\nA.\n\n"
+        "[Signal status]:\nB.\n\n"
+        "### [Risk evaluation] :\nC.\n"
+    )
+    out = _parse_9_section_brief(text)
+    assert out["Surgery context"] == "A."
+    assert out["Signal status"] == "B."
+    assert out["Risk evaluation"] == "C."
+
+
+def test_parser_clinician_review_on_own_line_preserved():
+    """[CLINICIAN-REVIEW ...] on its own line stays in the section body.
+    자체 줄의 [CLINICIAN-REVIEW ...] marker 가 본문에 보존됨.
+    """
+    text = (
+        "[Recommendations]\n"
+        "Consider clinician judgment.\n"
+        "[CLINICIAN-REVIEW: clinician review required]\n\n"
+        "[Limitations]\n"
+        "Mock FM tier.\n"
+    )
+    out = _parse_9_section_brief(text)
+    assert "[CLINICIAN-REVIEW" in out["Recommendations"]
+    assert out["Limitations"] == "Mock FM tier."
 
 
 # ── Serializer ──

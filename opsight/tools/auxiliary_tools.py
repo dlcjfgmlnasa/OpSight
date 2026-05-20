@@ -148,7 +148,7 @@ def tool_surgery_context_awareness(
             phase_hint = (
                 f"본 phase ({phase}) 에서 흔한 hemodynamic 변동을 임상의가 확인할 수 있다."
             )
-            clinical_review_marker = "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+            clinical_review_marker = "[CLINICIAN-REVIEW: 의료진 검토 필요]"
 
     # Always append clinical_review_marker to phase_hint if present.
     if clinical_review_marker and clinical_review_marker not in phase_hint:

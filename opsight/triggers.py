@@ -20,7 +20,7 @@ Trigger list / Trigger 목록 (brief §6.3):
 
 ⚠️ Trigger threshold는 brief §6.3 그대로. 실제 mock FM Tier 1 출력 분포에
    따라 fire 빈도가 plan 의도와 다를 수 있음. Tier 2 도착 (plan_1.6.5) 후
-   재조정 가능. ``[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]``
+   재조정 가능. ``[CLINICIAN-REVIEW: 의료진 검토 필요]``
 """
 from __future__ import annotations
 

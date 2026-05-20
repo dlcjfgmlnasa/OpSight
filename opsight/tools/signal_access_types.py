@@ -62,6 +62,7 @@ class VariabilityResult:
     - HR: ``{"SDNN_ms", "RMSSD_ms", "LF_HF_ratio"}``
     - MAP/ABP: ``{"SD_mmHg", "ARV_mmHg"}``
     - PPG: ``{"amplitude_var", "SVV_pct"}``
+    - CVP / PAP: ``{"SD_mmHg", "ARV_mmHg"}`` (BPV-style approximation)
 
     metric dict shape 는 modality 별 상이.
     """
@@ -96,12 +97,12 @@ class StateSynthesis:
     - ``overall_assessment`` 는 conditional phrasing 만 ("X 가능성을 시사함")
     - 단정형 금지 ("X 이다")
     - Dose 권고 절대 금지
-    - ``[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]`` marker 끝에 *반드시* 부착
+    - ``[CLINICIAN-REVIEW: 의료진 검토 필요]`` marker 끝에 *반드시* 부착
 
     ⚠️ Phrasing enforcement (ADR-016 §Clinical Fact Guard):
     - ``overall_assessment`` uses conditional phrasing only
     - No diagnostic assertions, no dose recommendations
-    - ``[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]`` marker MANDATORY at end
+    - ``[CLINICIAN-REVIEW: 의료진 검토 필요]`` marker MANDATORY at end
     """
 
     hemodynamic_state: str

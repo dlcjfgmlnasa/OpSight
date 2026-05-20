@@ -23,6 +23,22 @@ from opsight.preprocessing.sampling import resample_numpy
 from opsight.preprocessing.signal_config import config_for_modality
 
 
+# Minimum source sampling rate above which upsampling to ``target_sampling_rate_hz``
+# is allowed. Below this, the signal is treated as too sparse to be a true
+# waveform and is kept at its source rate.
+#
+# Rationale: VitalDB raw waveforms (SNUADC 500 Hz, Primus 62.5 Hz, BIS 128 Hz)
+# are all well above this floor. But live_view loads via ``interval=1.0`` →
+# 1 Hz, which is *not* a waveform sampling rate. Upsampling that to 100 Hz via
+# linear interpolation propagates NaN aggressively (one source NaN poisons
+# ~target_hz/source_hz output samples) and cannot recover the bandwidth that
+# was lost at load time. See `scripts/preprocess_audit.py` audit (Bug #1).
+# VitalDB raw waveform 의 native rate 는 모두 본 threshold 보다 위. live_view
+# 의 1Hz load 는 waveform rate 가 아니므로 100Hz upsample 시 NaN propagation
+# 으로 신호 손상. 위 threshold 미만이면 source rate 유지.
+MIN_UPSAMPLE_SOURCE_HZ: float = 10.0
+
+
 @dataclass(frozen=True)
 class PreprocessReport:
     """Aggregate diagnostics after preprocessing a signal dict.
@@ -104,14 +120,32 @@ def preprocess_signal_dict(
         # Step 3: waveform → BFM target rate resample (100 Hz default)
         # Numeric (HR/SpO2/BIS 등) 은 native rate 유지 — agent layer 의 통계 계산이
         # 이미 numerics-tolerant. Waveform 만 backend (BFM) 의 100 Hz target 정렬.
+        # NB: Only DOWNSAMPLE (source > target). Upsampling 1Hz → 100Hz on a
+        # waveform that was loaded sparsely (e.g., interval=1.0 via vitaldb)
+        # corrupts the signal — linear interpolation propagates NaN aggressively
+        # (one source NaN poisons ~target_hz/source_hz output samples) and
+        # cannot recover the bandwidth that was lost at load time. Keep the
+        # signal at source rate in that case; the agent layer (Tier 2 / Mock
+        # FM) is already rate-tolerant and Bio-FM (Stage 2) will receive raw
+        # native-rate signals via a different load path.
+        # NB: 다운샘플만 수행 (source > target). 1Hz 로 load 된 waveform 을 100Hz
+        # 로 upsample 하면 linear interpolation 의 NaN 전파로 신호가 손상되며
+        # (source NaN 1개가 ~target_hz/source_hz 개의 출력 NaN 으로), load 시점에
+        # 잃어버린 대역폭은 복구되지 않음. 이 경우 source rate 유지.
         resampled = False
         out_sr_hz = sr_hz
         if cfg.is_waveform and resample_waveforms_to_target and sr_hz != cfg.target_sampling_rate_hz:
-            filled = resample_numpy(
-                filled, source_hz=sr_hz, target_hz=cfg.target_sampling_rate_hz,
-            )
-            resampled = True
-            out_sr_hz = cfg.target_sampling_rate_hz
+            upsampling = sr_hz < cfg.target_sampling_rate_hz
+            if upsampling and sr_hz < MIN_UPSAMPLE_SOURCE_HZ:
+                # Source too sparse to upsample — keep at source rate.
+                # Source rate 가 너무 낮아 upsample 불가 — source rate 유지.
+                pass
+            else:
+                filled = resample_numpy(
+                    filled, source_hz=sr_hz, target_hz=cfg.target_sampling_rate_hz,
+                )
+                resampled = True
+                out_sr_hz = cfg.target_sampling_rate_hz
 
         out_signal[name] = torch.from_numpy(filled.astype(np.float32))
         per_mod[name] = {

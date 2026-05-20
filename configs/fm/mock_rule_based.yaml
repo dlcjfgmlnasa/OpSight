@@ -7,7 +7,7 @@
 # Status / 상태:
 #   Implemented (2026-05-16). Thresholds below are heuristics — every
 #   threshold carries an implicit
-#   ``[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]`` mark.
+#   ``[CLINICIAN-REVIEW: 의료진 검토 필요]`` mark.
 #   구현 완료 (2026-05-16). 아래 threshold는 휴리스틱이며 모두 암묵적으로
 #   ``[CLINICIAN-REVIEW]``가 적용된다.
 #
@@ -63,5 +63,5 @@ fm:
 #   Trend rule / Trend 규칙
 #     TREND_STABLE_BAND     : 1.0 mmHg/min
 #
-# `[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]` for every threshold above.
+# `[CLINICIAN-REVIEW: 의료진 검토 필요]` for every threshold above.
 # ─────────────────────────────────────────────────────────────────────────────

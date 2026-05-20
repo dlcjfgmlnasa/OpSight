@@ -43,10 +43,14 @@
 
 본 규칙은 모든 agent의 system prompt에 강제된다. 전문은 `docs/project_brief.md §13`에 위치한다. 요약:
 
-1. **⚠️ Clinical Fact Guard (임상 사실 가드)** — 어떤 agent도 임상 사실을 단독으로 단정하지 않는다. 임상 사실은 `[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]` marker를 붙이거나 조건문 (conditional)으로 재서술한다.
+1. **⚠️ Clinical Fact Guard (임상 사실 가드)** — 어떤 agent도 임상 사실을 단독으로 단정하지 않는다. 임상 사실은 `[CLINICIAN-REVIEW: 의료진 검토 필요]` marker를 붙이거나 조건문 (conditional)으로 재서술한다.
 2. **데이터 누수 (data leakage) 금지** — 시뮬레이션 시점 t에서는 t 이하의 데이터만 읽을 수 있다.
 3. **Trigger 로직은 rule-based** — LLM-driven이 아니다.
-4. **한글 우선 보고** — 브리프, planner 보고, 임상의 (clinician) 대상 출력은 한글이 기본이다. 코드 식별자, tool I/O, paper draft는 영문 허용.
+4. **언어 정책 (language policy)** — [ADR-PENDING: brief language] 2026-05-19 부터 **영문 우선 (English-first)** 로 전환 검토 중. 결정 시점까지 다음을 따른다:
+   - **Agent 출력 (브리프 / shallow narration / LLM-generated text)**: 영문 prompt 가 default (`prompts/*.en.md`). 한글 변형 (`prompts/*.md`) 도 유지하여 `--lang ko` 로 선택 가능. 모델 선택: 영문 Heavy slot = OpenBioLLM-70B 후보, 한글 Heavy slot = Llama-3.3-70B.
+   - **Planner / project 보고 / 회의 자료 / 옵시디언 노트 / commit message**: 한글이 default (project 운영 효율).
+   - **코드 식별자, tool I/O JSON, paper draft, github PR description**: 영문이 default.
+   - 임상 deployment 시점의 한글 brief variant 는 별도 fine-tune 후 결정 (Stage 4+ ADR).
 
 ## 5. 코딩 컨벤션 (Coding conventions)
 

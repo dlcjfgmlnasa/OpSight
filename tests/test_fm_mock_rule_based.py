@@ -112,26 +112,90 @@ def test_hypotension_low_risk_stable_normal_map() -> None:
     assert r.risk < 0.2
 
 
-def test_hypotension_fallback_when_no_abp() -> None:
-    """No ABP modality → fallback risk ≈ 0.4 with high uncertainty.
-    ABP 없음 → fallback risk ≈ 0.4, 높은 uncertainty.
+def test_hypotension_fallback_when_no_abp_no_hr() -> None:
+    """ECG-only signal — Tier 2 cannot derive prediction; presence reported.
+
+    ECG 만 있을 때 — Tier 2 는 1Hz raw ECG 로 hemodynamic 예측 불가.
+    ECG presence 가 meta 에 기록되고 risk 0.4 + 매우 높은 uncertainty 반환.
     """
     fm = RuleBasedBiosignalFM(seed=42)
     r = fm.predict_hypotension({"ECG_II": torch.zeros(100)}, horizon_min=5,
                                 available_modalities=["ECG_II"])
     assert r.risk == 0.4
-    assert r.uncertainty >= 0.7
-    assert r.meta["reason"] == "no_abp_modality"
+    assert r.uncertainty >= 0.8
+    assert r.meta["reason"] == "no_hemodynamic_proxy"
+    assert r.meta["predicted_from"] is None
+    assert r.meta["ecg_present"] is True
+    assert r.meta["ppg_present"] is False
 
 
-def test_hypotension_fallback_on_flatline() -> None:
-    """ABP flatline (zeros) → low-quality fallback.
-    ABP flatline (zeros) → low-quality fallback.
+def test_hypotension_fallback_on_flatline_abp_no_hr() -> None:
+    """ABP flatline + no HR → no_hemodynamic_proxy fallback.
+    ABP flatline + HR 없음 → no_hemodynamic_proxy fallback.
     """
     fm = RuleBasedBiosignalFM(seed=42)
     r = fm.predict_hypotension({"ABP": torch.zeros(1000)}, horizon_min=5,
                                 available_modalities=["ABP"])
-    assert r.meta["reason"] == "low_quality_abp"
+    assert r.meta["reason"] == "no_hemodynamic_proxy"
+    assert r.meta["predicted_from"] is None
+    # fallback_chain records ABP rejection then HR missing.
+    # fallback_chain 에 ABP rejected + HR missing 기록됨.
+    statuses = [step["tried"] + ":" + step["status"]
+                for step in r.meta["fallback_chain"]]
+    assert "abp:rejected_low_quality" in statuses
+    assert "hr:missing" in statuses
+
+
+def test_hypotension_hr_fallback_tachycardia() -> None:
+    """No ABP + HR=130 tachycardia → HR-proxy risk > 0, predicted_from=hr.
+    ABP 없음 + HR=130 빈맥 → HR proxy risk > 0, predicted_from=hr.
+    """
+    fm = RuleBasedBiosignalFM(seed=42, sampling_rate_hz=1.0)
+    # Steady HR=130 for 60s @ 1Hz
+    hr = torch.tensor([130.0 + 0.1 * i for i in range(60)])
+    r = fm.predict_hypotension({"HR": hr}, horizon_min=5,
+                                available_modalities=["HR"])
+    assert r.meta["predicted_from"] == "hr_compensation_proxy"
+    assert r.risk > 0.3  # tachy_score saturating + small positive slope
+    assert r.risk <= 0.7  # capped by HR-proxy ceiling
+    assert r.uncertainty >= 0.5  # higher than ABP path
+
+
+def test_hypotension_abp_preferred_over_hr() -> None:
+    """Both ABP and HR present → ABP path wins.
+    ABP + HR 둘 다 있을 때 → ABP 경로가 사용됨.
+    """
+    fm = RuleBasedBiosignalFM(seed=42, sampling_rate_hz=500.0)
+    sig = {
+        "ABP": _abp_series(mean=MAP_TARGET, slope_mmhg_per_min=0.0, n_samples=2000),
+        "HR": torch.full((2000,), 130.0),  # tachy — would push HR proxy up
+    }
+    r = fm.predict_hypotension(sig, horizon_min=5,
+                                available_modalities=["ABP", "HR"])
+    # ABP at MAP_TARGET → low risk; HR tachy ignored because ABP path used.
+    # ABP MAP_TARGET → low risk; HR tachy 무시 (ABP 경로 사용).
+    assert r.meta["predicted_from"] == "abp"
+    assert r.risk < 0.2
+
+
+def test_hypotension_ppg_ecg_only_no_proxy() -> None:
+    """PPG + ECG only (no ABP, no HR) → no_hemodynamic_proxy, presence reported.
+    PPG + ECG 만 (ABP/HR 없음) → no_hemodynamic_proxy, presence 기록.
+    """
+    fm = RuleBasedBiosignalFM(seed=42, sampling_rate_hz=1.0)
+    sig = {
+        "PPG": torch.randn(100),
+        "ECG_II": torch.randn(100),
+    }
+    r = fm.predict_hypotension(sig, horizon_min=5,
+                                available_modalities=["PPG", "ECG_II"])
+    assert r.meta["predicted_from"] is None
+    assert r.meta["reason"] == "no_hemodynamic_proxy"
+    assert r.meta["ppg_present"] is True
+    assert r.meta["ecg_present"] is True
+    # Slight uncertainty reduction when PPG/ECG present (tier-3 could use them).
+    # PPG/ECG presence 시 uncertainty 약간 낮음 (Tier 3 가 활용 가능 신호).
+    assert 0.8 <= r.uncertainty <= 0.9
     assert r.uncertainty >= 0.7
 
 
@@ -167,13 +231,76 @@ def test_arrest_high_when_two_flags() -> None:
     assert len(r.meta["flags"]) >= 2
 
 
-def test_arrest_fallback_when_no_hr_or_abp() -> None:
+def test_arrest_fallback_when_no_usable_proxy() -> None:
+    """PPG only (no HR/ABP/SpO2/EtCO2 in any usable form) → no_usable_proxy.
+    PPG 만 (HR/ABP/SpO2/EtCO2 가용 X) → no_usable_proxy.
+    """
     fm = RuleBasedBiosignalFM(seed=42)
     r = fm.predict_cardiac_arrest({"PPG": torch.zeros(100)}, horizon_min=5,
                                    available_modalities=["PPG"])
     assert r.risk == 0.05
-    assert r.uncertainty >= 0.7
-    assert r.meta["reason"] == "no_hr_or_abp"
+    assert r.uncertainty >= 0.8
+    assert r.meta["reason"] == "no_usable_proxy"
+    assert r.meta["predicted_from"] == []
+    assert r.meta["ppg_present"] is True
+    assert r.meta["ecg_present"] is False
+
+
+def test_arrest_etco2_low_fires_without_hr_abp() -> None:
+    """EtCO2 collapse alone → arrest flag without HR/ABP.
+    EtCO2 collapse 단독 → HR/ABP 없이도 arrest flag.
+    """
+    fm = RuleBasedBiosignalFM(seed=42)
+    sig = {"EtCO2": torch.full((100,), 5.0)}  # well below ARREST_ETCO2_LOW=10
+    r = fm.predict_cardiac_arrest(sig, horizon_min=5, available_modalities=["EtCO2"])
+    assert r.meta["predicted_from"] == ["etco2"]
+    assert any(f.startswith("etco2_low_") for f in r.meta["flags"])
+    assert r.risk > 0.2  # one flag → 0.02 + 0.6*0.5 = 0.32
+
+
+def test_arrest_multi_proxy_lower_uncertainty() -> None:
+    """Multiple confirming proxies → lower uncertainty than single proxy.
+    다중 proxy 확인 → 단일 proxy 보다 uncertainty 하락.
+    """
+    fm = RuleBasedBiosignalFM(seed=42)
+    # Same flag (HR low) appears in single-proxy vs four-proxy setups.
+    # 같은 flag (HR low) 가 단독 vs 4-proxy 설정에 등장.
+    single = fm.predict_cardiac_arrest(
+        {"HR": torch.full((100,), 30.0)},
+        horizon_min=5, available_modalities=["HR"],
+    )
+    multi = fm.predict_cardiac_arrest(
+        {
+            "HR": torch.full((100,), 30.0),
+            "ABP": _abp_series(mean=70, slope_mmhg_per_min=0, n_samples=2000),
+            "SpO2": torch.full((100,), 98.0),
+            "EtCO2": torch.full((100,), 35.0),
+        },
+        horizon_min=5, available_modalities=["HR", "ABP", "SpO2", "EtCO2"],
+    )
+    assert multi.uncertainty < single.uncertainty
+    assert multi.meta["modalities_used"] == 4
+    assert single.meta["modalities_used"] == 1
+
+
+def test_arrest_ecg_ppg_presence_reported_in_meta() -> None:
+    """ECG/PPG presence flags set in meta even when not exploited.
+    ECG/PPG presence 가 활용 안 돼도 meta 에 기록.
+    """
+    fm = RuleBasedBiosignalFM(seed=42)
+    sig = {
+        "HR": torch.full((100,), 75.0),
+        "ECG_II": torch.randn(100),
+        "PPG": torch.randn(100),
+    }
+    r = fm.predict_cardiac_arrest(sig, horizon_min=5,
+                                   available_modalities=["HR", "ECG_II", "PPG"])
+    assert r.meta["ecg_present"] is True
+    assert r.meta["ppg_present"] is True
+    # Only HR is in predicted_from; ECG/PPG presence reported but not used.
+    # predicted_from 에는 HR 만; ECG/PPG presence 만 보고됨.
+    assert "hr" in r.meta["predicted_from"]
+    assert "ecg" not in r.meta["predicted_from"]
 
 
 # ── assess_signal_quality ──
@@ -333,6 +460,60 @@ def test_anomaly_flatline_low() -> None:
     r = fm.anomaly_score({"ABP": torch.zeros(2000)}, "ABP")
     assert r.score == pytest.approx(0.05)
     assert r.meta["reason"] == "flatline"
+
+
+# ── NaN-burden guards (Scope 2 audit) ──
+
+
+def _nan_burdened(real_values: list[float], total_len: int, seed: int = 7) -> torch.Tensor:
+    """Make a tensor where ``real_values`` are scattered at random indices and
+    the rest is NaN. Useful for testing sparse-finite (NaN-burdened) inputs.
+    """
+    rng = np.random.default_rng(seed)
+    arr = np.full(total_len, np.nan, dtype=np.float64)
+    idx = rng.choice(total_len, size=len(real_values), replace=False)
+    arr[idx] = real_values
+    return torch.from_numpy(arr.astype(np.float32))
+
+
+def test_trend_nan_burden_rejected() -> None:
+    """50%+ NaN window → trend rejected as stable with reason marker.
+    50% 초과 NaN window → trend stable 로 reject + reason marker.
+    """
+    fm = RuleBasedBiosignalFM(seed=42, sampling_rate_hz=1.0)
+    # 10 finite samples scattered across 100 — 90% NaN.
+    sig = {"ABP": _nan_burdened([60, 65, 70, 75, 80, 85, 90, 95, 100, 105], 100)}
+    r = fm.temporal_trend(sig, "ABP", window_min=5)
+    assert r.label == "stable"
+    assert r.slope == 0.0
+    assert r.meta["reason"] == "nan_burden_rejected"
+    assert r.meta["nan_ratio"] >= 0.5
+
+
+def test_forecast_nan_burden_returns_flat_high_uncertainty() -> None:
+    """50%+ NaN → flat forecast at finite-mean + uncertainty 15.
+    50% 초과 NaN → finite 평균으로 flat forecast + uncertainty 15.
+    """
+    fm = RuleBasedBiosignalFM(seed=42, sampling_rate_hz=1.0)
+    sig = {"ABP": _nan_burdened([70.0] * 5, 100)}  # 5 finite of value 70
+    r = fm.forecast_signal(sig, "ABP", horizon_min=5)
+    assert r.meta["reason"] == "nan_burden_rejected"
+    assert all(f == 70.0 for f in r.forecast)
+    assert all(u == 15.0 for u in r.uncertainty)
+
+
+def test_anomaly_nan_burden_rejected() -> None:
+    """50%+ NaN → score 0 + reason marker (no false z-score spike).
+    50% 초과 NaN → score 0 + reason marker (false z-score spike 차단).
+    """
+    fm = RuleBasedBiosignalFM(seed=42)
+    # 10 samples, one of which is a huge outlier — old code would flag.
+    # 10 sample, 그 중 하나가 큰 outlier — old code 라면 flag 발화.
+    sig = {"ABP": _nan_burdened([60, 60, 60, 60, 60, 60, 60, 60, 60, 999], 100)}
+    r = fm.anomaly_score(sig, "ABP")
+    assert r.score == 0.0
+    assert r.meta["reason"] == "nan_burden_rejected"
+    assert r.meta["nan_ratio"] >= 0.5
 
 
 # ── Noise injection ──

@@ -167,7 +167,7 @@ def render_deep_brief(
         "Similar trajectory": "Similar case 검색은 tool 13 (find_similar_cases) 미구현 — TBD.",
         "Recommendations": (
             "임상적 고려사항은 임상의 판단 영역이다. "
-            "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+            "[CLINICIAN-REVIEW: 의료진 검토 필요]"
         ),
         "Limitations": (
             "본 브리프는 placeholder template LLM 출력이다. 진단 / 처방 권고가 "
