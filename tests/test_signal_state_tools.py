@@ -1,18 +1,17 @@
-"""Tests for plan_1.3.5 Signal Access tools (17–21).
-plan_1.3.5 Signal Access tool (17–21) 테스트.
+"""Tests for opsight.tools.signal_state_tools (ADR-016, amended 2026-06-10).
+opsight.tools.signal_state_tools 테스트 (구 signal_state + signal_access_tools 병합).
 
 Coverage:
-- Tool 17 get_current_vitals: 9 vital field 채워짐 / ABP→NIBP fallback / 모든 modality 부재
-- Tool 18 describe_signal: NaN-safe / missing_ratio==1.0 경계 / invalid modality
-- Tool 19 assess_variability: HRV (HR) / BPV (MAP) / SVV (PPG) / 미지의 modality
-- Tool 20 compare_to_baseline: preop 우선 / intraop early fallback / 둘 다 부재
-- Tool 21 summarize_current_state: 17–20 합성 / [CLINICIAN-REVIEW] marker / 단정 어조 ban
-- Leakage: 모든 5 tool 에서 `sim_time_s > clock.now_s` → leakage_violation
-- Registry: 21 entry + signal_access 카테고리 5 / call_tool dispatch
+- get_current_state: trailing-window 스냅샷 / available·missing / NaN-safe / leakage
+- get_signal_trend: rising / falling / stable / single-modality / unknown / leakage
+- describe_signal: NaN-safe / missing_ratio==1.0 경계 / invalid modality
+- assess_variability: HRV (HR) / BPV (MAP/CVP/PAP) / SVV (PPG) / 미지의 modality
+- compare_to_baseline: preop 우선 / intraop early fallback / 둘 다 부재
+- summarize_current_state: get_current_state 합성 / [CLINICIAN-REVIEW] marker / 단정 어조 ban
+- Leakage: `sim_time_s > clock.now_s` → leakage_violation
+- Registry: signal_state 카테고리 / call_tool dispatch
 """
 from __future__ import annotations
-
-import re
 
 import numpy as np
 import pytest
@@ -21,12 +20,13 @@ import torch
 from opsight.sim_clock import SimClock
 from opsight.tools.envelope import ToolRequest
 from opsight.tools.registry import TOOLS, call_tool
-from opsight.tools.signal_access_tools import (
+from opsight.tools.signal_state_tools import (
     USE_NEUROKIT,
     tool_assess_variability,
     tool_compare_to_baseline,
     tool_describe_signal,
-    tool_get_current_vitals,
+    tool_get_current_state,
+    tool_get_signal_trend,
     tool_summarize_current_state,
 )
 
@@ -42,9 +42,7 @@ def clock() -> SimClock:
 
 
 def _synth_signal_full() -> dict[str, torch.Tensor]:
-    """Synthetic signal with all 9 modalities for tool 17 happy path.
-    Tool 17 happy path 용 9 modality 합성.
-    """
+    """Synthetic signal with all 9 numeric vitals + ABP/PPG waveforms."""
     rng = np.random.default_rng(0)
     n_wave = 5000
     n_num = 60
@@ -63,56 +61,156 @@ def _synth_signal_full() -> dict[str, torch.Tensor]:
 
 
 def _req(tool: str, args: dict, sim_time_s: float = 30.0) -> ToolRequest:
+    """Tool-name-first request builder (describe/variability/baseline/summarize)."""
     return ToolRequest(
         case_id="c-001", sim_time_s=sim_time_s, tool_name=tool, args=args,
     )
 
 
-# ── Tool 17 — get_current_vitals ──
-
-
-def test_tool17_happy_all_fields(clock):
-    sig = _synth_signal_full()
-    r = tool_get_current_vitals(_req("get_current_vitals", {}), clock, sig)
-    assert r.ok
-    res = r.result
-    # All 9 fields populated (not None)
-    for k in ("map_mmHg", "sbp_mmHg", "dbp_mmHg", "hr_bpm", "rr_per_min",
-              "spo2_pct", "etco2_mmHg", "bis", "core_temp_c"):
-        assert res[k] is not None, f"field {k} is None despite synthetic full signal"
-    # Map sanity (synthetic mean ≈ 80)
-    assert 75 < res["map_mmHg"] < 85
-    # source_tracks populated
-    assert "map_mmHg" in r.quality_meta["source_tracks"]
-
-
-def test_tool17_nibp_fallback_when_only_nibp_present(clock):
-    sig = {"Solar8000/NIBP_MBP": torch.tensor([90.0] * 60, dtype=torch.float32)}
-    r = tool_get_current_vitals(_req("get_current_vitals", {}), clock, sig)
-    assert r.ok
-    assert r.result["map_mmHg"] == pytest.approx(90.0)
-    # fallback tracked in meta
-    assert any("map_mmHg" in s for s in r.result["meta"]["fallback_used"])
-
-
-def test_tool17_all_modalities_absent_yields_all_none(clock):
-    r = tool_get_current_vitals(_req("get_current_vitals", {}), clock, {})
-    assert r.ok
-    for k in ("map_mmHg", "hr_bpm", "spo2_pct", "etco2_mmHg", "bis"):
-        assert r.result[k] is None
-
-
-def test_tool17_leakage_violation(clock):
-    # sim_time_s 9999 > clock.now_s 60 → leakage
-    sig = _synth_signal_full()
-    r = tool_get_current_vitals(
-        _req("get_current_vitals", {}, sim_time_s=9999.0), clock, sig,
+def _sreq(args: dict | None = None, *, sim_time_s: float = 300.0) -> ToolRequest:
+    """Args-first request builder (current_state / signal_trend tests)."""
+    return ToolRequest(
+        case_id="c1", sim_time_s=sim_time_s,
+        tool_name="t", args=args or {},
     )
-    assert not r.ok
-    assert r.error.type == "leakage_violation"
 
 
-# ── Tool 18 — describe_signal ──
+# ── get_current_state ──
+
+
+def test_current_state_reads_present_vitals():
+    # 300 samples @ 1 Hz = 5 min. Last 10 s mean ≈ tail values.
+    sig = {
+        "MAP": torch.from_numpy(np.full(300, 62.0, dtype=np.float32)),
+        "HR": torch.from_numpy(np.full(300, 88.0, dtype=np.float32)),
+    }
+    clock = SimClock(start_s=300.0)
+    resp = tool_get_current_state(_sreq({"sampling_rate_hz": 1.0}), clock, sig)
+    assert resp.ok
+    v = resp.result["vitals"]
+    assert v["map_mmHg"] == pytest.approx(62.0)
+    assert v["hr_bpm"] == pytest.approx(88.0)
+    # Absent vitals are reported None + listed in missing.
+    assert v["spo2_pct"] is None
+    assert "spo2_pct" in resp.result["missing"]
+    assert set(resp.result["available"]) == {"map_mmHg", "hr_bpm"}
+    assert resp.result["meta"]["source_tracks"]["map_mmHg"] == "MAP"
+
+
+def test_current_state_window_takes_trailing_mean():
+    # Ramp 0..299; @1Hz last 10 s = samples 290..299, mean = 294.5.
+    sig = {"MAP": torch.from_numpy(np.arange(300, dtype=np.float32))}
+    clock = SimClock(start_s=300.0)
+    resp = tool_get_current_state(
+        _sreq({"sampling_rate_hz": 1.0, "window_s": 10.0}), clock, sig)
+    assert resp.ok
+    assert resp.result["vitals"]["map_mmHg"] == pytest.approx(294.5)
+
+
+def test_current_state_nan_safe():
+    arr = np.full(60, np.nan, dtype=np.float32)
+    arr[-5:] = 70.0
+    sig = {"MAP": torch.from_numpy(arr)}
+    clock = SimClock(start_s=300.0)
+    resp = tool_get_current_state(
+        _sreq({"sampling_rate_hz": 1.0, "window_s": 10.0}), clock, sig)
+    assert resp.ok
+    assert resp.result["vitals"]["map_mmHg"] == pytest.approx(70.0)
+
+
+def test_current_state_leakage_guard():
+    sig = {"MAP": torch.zeros(10, dtype=torch.float32)}
+    clock = SimClock(start_s=100.0)  # now=100, request sim_time=300 → leak
+    resp = tool_get_current_state(_sreq(sim_time_s=300.0), clock, sig)
+    assert not resp.ok
+    assert resp.error.type == "leakage_violation"
+
+
+# ── get_signal_trend ──
+
+
+def test_trend_detects_falling_map():
+    # MAP drops 80 → 60 over 5 min @ 1 Hz.
+    sig = {"MAP": torch.from_numpy(np.linspace(80.0, 60.0, 300).astype(np.float32))}
+    clock = SimClock(start_s=300.0)
+    resp = tool_get_signal_trend(
+        _sreq({"sampling_rate_hz": 1.0, "window_s": 300.0}), clock, sig)
+    assert resp.ok
+    tr = resp.result["trends"]["map_mmHg"]
+    assert tr["direction"] == "falling"
+    # Slope is exact: 20 mmHg drop over 5 min = -4 mmHg/min.
+    assert tr["slope_per_min"] == pytest.approx(-4.0, abs=0.05)
+    # delta uses robust 20% sub-window means (smaller magnitude than endpoints).
+    assert tr["delta"] < -10.0
+    assert tr["r_squared"] > 0.99  # near-perfect line
+
+
+def test_trend_detects_rising():
+    sig = {"HR": torch.from_numpy(np.linspace(70.0, 110.0, 300).astype(np.float32))}
+    clock = SimClock(start_s=300.0)
+    resp = tool_get_signal_trend(
+        _sreq({"sampling_rate_hz": 1.0, "modality": "hr_bpm"}), clock, sig)
+    assert resp.ok
+    assert resp.result["trends"]["hr_bpm"]["direction"] == "rising"
+
+
+def test_trend_flat_is_stable():
+    sig = {"MAP": torch.from_numpy(np.full(300, 75.0, dtype=np.float32))}
+    clock = SimClock(start_s=300.0)
+    resp = tool_get_signal_trend(_sreq({"sampling_rate_hz": 1.0}), clock, sig)
+    assert resp.ok
+    assert resp.result["trends"]["map_mmHg"]["direction"] == "stable"
+
+
+def test_trend_single_modality_only_returns_that_field():
+    sig = {
+        "MAP": torch.from_numpy(np.linspace(80.0, 60.0, 300).astype(np.float32)),
+        "HR": torch.from_numpy(np.full(300, 88.0, dtype=np.float32)),
+    }
+    clock = SimClock(start_s=300.0)
+    resp = tool_get_signal_trend(
+        _sreq({"sampling_rate_hz": 1.0, "modality": "MAP"}), clock, sig)
+    assert resp.ok
+    assert set(resp.result["trends"]) == {"map_mmHg"}
+
+
+def test_trend_all_vitals_when_modality_omitted():
+    sig = {
+        "MAP": torch.from_numpy(np.linspace(80.0, 60.0, 300).astype(np.float32)),
+        "HR": torch.from_numpy(np.full(300, 88.0, dtype=np.float32)),
+    }
+    clock = SimClock(start_s=300.0)
+    resp = tool_get_signal_trend(_sreq({"sampling_rate_hz": 1.0}), clock, sig)
+    assert resp.ok
+    assert set(resp.result["trends"]) == {"map_mmHg", "hr_bpm"}
+
+
+def test_trend_unknown_modality_errors():
+    sig = {"MAP": torch.zeros(10, dtype=torch.float32)}
+    clock = SimClock(start_s=300.0)
+    resp = tool_get_signal_trend(
+        _sreq({"modality": "not_a_vital"}), clock, sig)
+    assert not resp.ok
+    assert resp.error.type == "invalid_args"
+
+
+def test_trend_insufficient_samples_is_unknown():
+    sig = {"MAP": torch.from_numpy(np.array([70.0], dtype=np.float32))}
+    clock = SimClock(start_s=300.0)
+    resp = tool_get_signal_trend(_sreq({"sampling_rate_hz": 1.0}), clock, sig)
+    assert resp.ok
+    assert resp.result["trends"]["map_mmHg"]["direction"] == "unknown"
+
+
+def test_trend_leakage_guard():
+    sig = {"MAP": torch.zeros(10, dtype=torch.float32)}
+    clock = SimClock(start_s=100.0)
+    resp = tool_get_signal_trend(_sreq(sim_time_s=300.0), clock, sig)
+    assert not resp.ok
+    assert resp.error.type == "leakage_violation"
+
+
+# ── describe_signal ──
 
 
 def test_tool18_happy_abp_stats(clock):
@@ -152,7 +250,7 @@ def test_tool18_missing_modality_arg(clock):
     assert r.error.type == "invalid_args"
 
 
-# ── Tool 19 — assess_variability ──
+# ── assess_variability ──
 
 
 def test_tool19_hr_returns_hrv_metrics(clock):
@@ -163,8 +261,6 @@ def test_tool19_hr_returns_hrv_metrics(clock):
     assert r.ok
     assert "SDNN_ms" in r.result["metrics"]
     assert "RMSSD_ms" in r.result["metrics"]
-    # LF/HF is None on short series even with NeuroKit
-    # 짧은 series 에서는 LF/HF None
     expected_impl = "neurokit" if USE_NEUROKIT else "numpy_fallback"
     assert r.result["meta"]["implementation"] == expected_impl
 
@@ -265,7 +361,7 @@ def test_tool19_fallback_metadata_when_no_neurokit():
     assert "LF_HF_ratio" in r.result["meta"]["unavailable_metrics"]
 
 
-# ── Tool 20 — compare_to_baseline ──
+# ── compare_to_baseline ──
 
 
 def test_tool20_preop_baseline_priority(clock):
@@ -297,7 +393,6 @@ def test_tool20_intraop_fallback_when_no_preop(clock):
 
 def test_tool20_no_baseline_available(clock):
     # signal too short for intraop fallback (need ≥ 2 samples in first 10 min)
-    # signal 이 너무 짧음 (intraop fallback 위해 first 10 min ≥ 2 sample 필요)
     sig = {"ABP": torch.tensor([80.0], dtype=torch.float32)}
     r = tool_compare_to_baseline(
         _req("compare_to_baseline", {"modality": "ABP", "sampling_rate_hz": 1.0}),
@@ -317,18 +412,15 @@ def test_tool20_modality_absent(clock):
     assert r.error.type == "invalid_args"
 
 
-# ── Tool 21 — summarize_current_state ──
+# ── summarize_current_state ──
 
 
 # Banned diagnostic phrasings — substrings that indicate assertive language
-# 단정 어조 ban — phrase substring 목록
 _BANNED_PHRASES = ("이다.", "진단", "처치", "투여", "권고")
 
 
 def test_tool21_rule_based_synthesizes_from_vitals(clock):
-    """Tool 21 rule-based threshold path (ADR-018: stub → rule_based).
-    Tool 21 rule-based threshold path (ADR-018: stub → rule_based 로 label 변경).
-    """
+    """rule-based threshold path (ADR-018: rule_based)."""
     sig = _synth_signal_full()
     r = tool_summarize_current_state(
         _req("summarize_current_state", {}), clock, sig,
@@ -338,15 +430,12 @@ def test_tool21_rule_based_synthesizes_from_vitals(clock):
     assert res["hemodynamic_state"] == "stable"  # MAP 80 normal
     assert res["anesthesia_state"] == "adequate_range"  # BIS 50 in 40-60
     assert res["respiratory_state"] == "stable"  # SpO2 98 normal
-    # ADR-018: tier0_status renamed stub → rule_based (logic unchanged).
-    # ADR-018: tier0_status 가 stub → rule_based 로 변경 (로직은 동일).
     assert res["meta"]["tier0_status"] == "rule_based"
     assert r.quality_meta["tier0_status"] == "rule_based"
 
 
 def test_tool21_clinician_review_marker_mandatory(clock):
-    """Tool 21 의 overall_assessment 는 [CLINICIAN-REVIEW] marker 를 반드시 포함.
-    """
+    """overall_assessment 는 [CLINICIAN-REVIEW] marker 를 반드시 포함."""
     sig = _synth_signal_full()
     r = tool_summarize_current_state(
         _req("summarize_current_state", {}), clock, sig,
@@ -356,8 +445,7 @@ def test_tool21_clinician_review_marker_mandatory(clock):
 
 
 def test_tool21_no_assertive_phrasing_in_output(clock):
-    """단정 어조 ("이다.", "진단", "처치", ...) 가 출력에 없어야 한다.
-    """
+    """단정 어조 ("이다.", "진단", "처치", ...) 가 출력에 없어야 한다."""
     sig = _synth_signal_full()
     r = tool_summarize_current_state(
         _req("summarize_current_state", {}), clock, sig,
@@ -393,7 +481,6 @@ def test_tool21_clinical_review_required_in_quality_meta(clock):
     )
     assert r.ok
     assert r.quality_meta["clinical_review_required"] is True
-    # ADR-018: tier0_status renamed stub → rule_based.
     assert r.quality_meta["tier0_status"] == "rule_based"
 
 
@@ -409,24 +496,20 @@ def test_tool21_leakage_violation(clock):
 # ── Registry integration / Registry 통합 ──
 
 
-def test_registry_now_has_21_tools():
-    assert len(TOOLS) == 21
-
-
-def test_registry_signal_access_category_has_5():
-    sa = [name for name, spec in TOOLS.items() if spec.category == "signal_access"]
-    assert len(sa) == 5
+def test_registry_signal_state_category():
+    sa = [name for name, spec in TOOLS.items() if spec.category == "signal_state"]
     assert set(sa) == {
-        "get_current_vitals", "describe_signal", "assess_variability",
-        "compare_to_baseline", "summarize_current_state",
+        "get_current_state", "get_signal_trend", "describe_signal",
+        "assess_variability", "compare_to_baseline", "summarize_current_state",
     }
 
 
-def test_call_tool_routes_signal_access_via_dispatch(clock):
+def test_call_tool_routes_signal_state_via_dispatch(clock):
     sig = _synth_signal_full()
-    # signal access tools needs_signal=True, needs_fm=False
-    for name in ("get_current_vitals", "describe_signal", "assess_variability",
-                 "compare_to_baseline", "summarize_current_state"):
+    # signal-state tools needs_signal=True
+    for name in ("get_current_state", "get_signal_trend", "describe_signal",
+                 "assess_variability", "compare_to_baseline",
+                 "summarize_current_state"):
         args = _minimal_args(name)
         req = ToolRequest(case_id="c1", sim_time_s=30.0, tool_name=name, args=args)
         r = call_tool(name, req, clock=clock, signal=sig)
@@ -434,7 +517,7 @@ def test_call_tool_routes_signal_access_via_dispatch(clock):
 
 
 def _minimal_args(name: str) -> dict:
-    if name in ("get_current_vitals", "summarize_current_state"):
+    if name in ("get_current_state", "get_signal_trend", "summarize_current_state"):
         return {}
     if name == "describe_signal":
         return {"modality": "ABP"}
@@ -446,13 +529,5 @@ def _minimal_args(name: str) -> dict:
 
 
 def test_neurokit2_environment_status():
-    """Documents NeuroKit2 availability — informational test.
-    NeuroKit2 가용 상태 문서화 (informational).
-    """
-    if USE_NEUROKIT:
-        # PRIMARY path active
-        assert True
-    else:
-        # FALLBACK path — would be skipped if NeuroKit2 ever uninstalled
-        # FALLBACK path — NeuroKit2 미설치 시
-        assert True
+    """Documents NeuroKit2 availability — informational test."""
+    assert USE_NEUROKIT or not USE_NEUROKIT

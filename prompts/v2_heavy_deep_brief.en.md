@@ -54,7 +54,9 @@ Section headers are emitted **verbatim** (system parses on these keys). Body is 
 
 ### Signal Access tools (17–21) citation rules
 
-**Tool 17 `get_current_vitals`** — 9 fields (MAP/SBP/DBP/HR/RR/SpO2/EtCO2/BIS/temp). Missing fields are `None`; omit them or note "not measured".
+**`get_current_state`** — current snapshot, `vitals` dict of 9 fields (MAP/SBP/DBP/HR/RR/SpO2/EtCO2/BIS/temp) as trailing-window means, plus `available` / `missing` lists. Missing vitals are `None`; omit them or note "not measured".
+
+**`get_signal_trend`** — per-vital `trends` over a trailing window: `direction` (rising/falling/stable), `slope_per_min`, `delta`, `delta_pct`, `r_squared`. Use to state whether a change is sustained vs transient; cite low `r_squared` as uncertainty in `[Limitations]`.
 
 **Tool 18 `describe_signal`** — mean/std/min/max/median/iqr/missing_ratio/n_samples. Cite high `missing_ratio` in `[Limitations]`.
 

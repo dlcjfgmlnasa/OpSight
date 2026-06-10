@@ -45,7 +45,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from opsight.fm.factory import create_fm
 from opsight.llm.vllm_client import VLLMClient
 from opsight.preprocessing import preprocess_signal_dict
 from opsight.sim_clock import SimClock
@@ -65,20 +64,10 @@ from scripts.run_real_case import (
 
 
 def _shallow_args(name: str, sim_time_s: float, modalities: list[str]) -> dict:
-    if name == "predict_hypotension":
-        return {"horizon_min": 5, "available_modalities": modalities}
-    if name == "predict_cardiac_arrest":
-        return {"horizon_min": 5, "available_modalities": modalities}
-    if name == "assess_signal_quality":
-        return {"modality": modalities[0] if modalities else "ABP"}
-    if name == "cross_modal_consistency":
-        if len(modalities) >= 2:
-            return {"modality_pair": [modalities[0], modalities[1]]}
-        return {"modality_pair": [modalities[0] if modalities else "ABP", "ABP"]}
-    if name == "anomaly_score":
-        return {"modality": modalities[0] if modalities else "ABP"}
-    # ADR-018 additions
+    # FM forecast tools removed (Biosignal Foundation Model decoupled).
     if name == "summarize_current_state":
+        return {}
+    if name == "get_current_state":
         return {}
     if name == "query_surgery_progress":
         return {"current_time": sim_time_s}
@@ -91,20 +80,7 @@ def _deep_args(name: str, sim_time_s: float, modalities: list[str]) -> dict:
     """Mirror of opsight.nodes.deep_brief._deep_args (sim_time_s passed in).
     deep_brief._deep_args 와 동일 (sim_time_s 만 직접 받음).
     """
-    if name in ("predict_hypotension", "predict_cardiac_arrest"):
-        return {"horizon_min": 5, "available_modalities": modalities}
-    if name == "assess_signal_quality":
-        return {"modality": modalities[0] if modalities else "ABP"}
-    if name == "cross_modal_consistency":
-        if len(modalities) >= 2:
-            return {"modality_pair": [modalities[0], modalities[1]]}
-        return {"modality_pair": [modalities[0] if modalities else "ABP", "ABP"]}
-    if name == "temporal_trend_analysis":
-        return {"modality": modalities[0] if modalities else "ABP", "window_min": 5}
-    if name == "forecast_signal":
-        return {"modality": modalities[0] if modalities else "ABP", "horizon_min": 5}
-    if name == "anomaly_score":
-        return {"modality": modalities[0] if modalities else "ABP"}
+    # FM forecast tools removed (Biosignal Foundation Model decoupled).
     if name in ("query_anesthesia_drugs", "query_vasoactive_drugs", "query_fluid_blood"):
         return {"time_window": [max(0.0, sim_time_s - 300.0), sim_time_s]}
     if name == "query_surgery_progress":
@@ -125,7 +101,9 @@ def _deep_args(name: str, sim_time_s: float, modalities: list[str]) -> dict:
                     {"value": 0.0, "quality": 0.5, "source": "placeholder_a"},
                     {"value": 0.0, "quality": 0.5, "source": "placeholder_b"}],
                 "method": "weighted_mean"}
-    if name == "get_current_vitals":
+    if name == "get_current_state":
+        return {}
+    if name == "get_signal_trend":
         return {}
     if name == "describe_signal":
         return {"modality": modalities[0] if modalities else "ABP", "window_min": 5}
@@ -208,10 +186,6 @@ def stage_2_narrate_real(
     print(f"\n[2] Shallow tools ({len(SHALLOW_TOOL_NAMES)}) on real case → "
           f"narrate() via {model}  (ADR-018 — 8 tool + case_baseline)")
 
-    fm = create_fm({"fm": {"implementation": "mock_rule_based",
-                           "config": {"seed": 42,
-                                      "sampling_rate_hz": sampling_rate_hz,
-                                      "noise_pct": 0.0}}})
     clock = SimClock(start_s=sim_time_s)
     case_tag = f"vitaldb-{case_id}"
 
@@ -223,7 +197,7 @@ def stage_2_narrate_real(
     )
     t0 = time.perf_counter()
     baseline_resp = call_tool("query_patient_baseline", baseline_req,
-                              fm=fm, clock=clock, signal=signal)
+                              clock=clock, signal=signal)
     dt = (time.perf_counter() - t0) * 1000
     ok = baseline_resp.ok and baseline_resp.result is not None
     print(f"  · case_init query_patient_baseline    {'ok' if ok else 'ERR':8s} "
@@ -235,7 +209,7 @@ def stage_2_narrate_real(
         req = ToolRequest(case_id=case_tag, sim_time_s=sim_time_s,
                           tool_name=name, args=args)
         t0 = time.perf_counter()
-        resp = call_tool(name, req, fm=fm, clock=clock, signal=signal)
+        resp = call_tool(name, req, clock=clock, signal=signal)
         dt = (time.perf_counter() - t0) * 1000
         ok_str = "ok" if resp.ok else f"ERR({resp.error.type if resp.error else '?'})"
         head = ", ".join(f"{k}={v}" for k, v in list((resp.result or {}).items())[:3])
@@ -279,10 +253,6 @@ def stage_3_brief_real(
     print(f"  ⚠ small local models may not produce perfect [Section] headers;")
     print(f"     parser fills missing sections with ''.")
 
-    fm = create_fm({"fm": {"implementation": "mock_rule_based",
-                           "config": {"seed": 42,
-                                      "sampling_rate_hz": sampling_rate_hz,
-                                      "noise_pct": 0.0}}})
     clock = SimClock(start_s=sim_time_s)
     case_tag = f"vitaldb-{case_id}"
 
@@ -297,7 +267,7 @@ def stage_3_brief_real(
         req = ToolRequest(case_id=case_tag, sim_time_s=sim_time_s,
                           tool_name=name, args=args)
         t0 = time.perf_counter()
-        resp = call_tool(name, req, fm=fm, clock=clock, signal=signal)
+        resp = call_tool(name, req, clock=clock, signal=signal)
         dt = (time.perf_counter() - t0) * 1000
         ok_str = "ok" if resp.ok else f"ERR({resp.error.type if resp.error else '?'})"
         print(f"  · {name:32s} {ok_str:8s} {dt:5.0f}ms")

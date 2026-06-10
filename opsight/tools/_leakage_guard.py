@@ -9,9 +9,8 @@ project_brief §13.2 (데이터 누수 금지): 시뮬레이션 시점 ``t`` 에
 데이터만 읽을 수 있다. window 끝이 sim-clock ``clock.now_s`` 를 초과하는 모든
 조회는 미래 정보를 조용히 누설하지 않고 명시적으로 실패해야 한다.
 
-This module is the single source of truth for the guard. Both the EMR tools
-(``opsight/tools/emr_tools_stub.py``) and the Signal Access tools
-(``opsight/tools/signal_access_tools.py``) consume it (ADR-021 §"Leakage guard
+This module is the single source of truth for the guard. The signal-state tools
+(``opsight/tools/signal_state_tools.py``) consume it (ADR-021 §"Leakage guard
 일관성"; plan_1.3.5 reuses the same guard).
 본 module 은 guard 의 단일 진실 원천이다. EMR tool 과 Signal Access tool 이 모두
 소비한다 (ADR-021; plan_1.3.5 동일 guard 재사용).

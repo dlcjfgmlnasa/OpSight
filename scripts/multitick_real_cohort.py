@@ -33,7 +33,6 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from opsight.fm.factory import create_fm
 from opsight.graph import build_graph
 from opsight.preprocessing import preprocess_signal_dict
 from opsight.signal_stream import stream_from_full_signal
@@ -132,12 +131,6 @@ def _run_case(
         signal, sampling_rates_hz=rates, default_sampling_rate_hz=sr_hz
     )
 
-    fm = create_fm({
-        "fm": {
-            "implementation": "mock_rule_based",
-            "config": {"seed": 42, "sampling_rate_hz": sr_hz, "noise_pct": 0.0},
-        }
-    })
     clock = SimClock(start_s=0.0)
     initial = AgentState(case_id=f"vitaldb-{case_id}", trace_id=f"multitick-{case_id}")
 
@@ -145,7 +138,7 @@ def _run_case(
     t0 = time.perf_counter()
     with TraceWriter(trace_path, trace_id=initial.trace_id, case_id=initial.case_id) as tw:
         graph = build_graph(
-            fm=fm, clock=clock, signal_stream=stream, modalities=modalities,
+            clock=clock, signal_stream=stream, modalities=modalities,
             max_ticks=max_ticks, tick_sim_advance_s=tick_sim_advance_s, trace=tw,
         )
         final = graph.invoke(initial, {"recursion_limit": 200})

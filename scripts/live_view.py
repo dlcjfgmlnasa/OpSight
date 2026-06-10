@@ -44,7 +44,6 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from opsight.fm.factory import create_fm
 from opsight.llm.vllm_client import VLLMClient
 from opsight.nodes.shallow_loop import run_shallow_loop
 from opsight.nodes.deep_brief import run_deep_brief
@@ -518,12 +517,6 @@ def main() -> int:
     stream = stream_from_full_signal(
         signal, sampling_rates_hz=rates, default_sampling_rate_hz=sr_hz
     )
-    fm = create_fm({
-        "fm": {
-            "implementation": "mock_rule_based",
-            "config": {"seed": 42, "sampling_rate_hz": sr_hz, "noise_pct": 0.0},
-        }
-    })
     clock = SimClock(start_s=0.0)
     state = AgentState(case_id=f"vitaldb-{args.case_id}",
                        trace_id=f"live-{args.case_id}")
@@ -534,7 +527,7 @@ def main() -> int:
         tool_name="query_patient_baseline", args={},
     )
     sliced = stream.view_until(state.sim_time_s)
-    resp = call_tool("query_patient_baseline", req, fm=fm, clock=clock, signal=sliced)
+    resp = call_tool("query_patient_baseline", req, clock=clock, signal=sliced)
     state = state.model_copy(update={
         "case_baseline": resp.result if resp.ok else None
     })
@@ -558,7 +551,7 @@ def main() -> int:
     print()
     print(_color(
         "Per-tick grouped output:  VITALS (numeric vitals) / WAVES (raw waveforms) / "
-        "DRUGS (Orchestra infusion) / PRED (FM predictions)",
+        "DRUGS (Orchestra infusion)",
         BOLD,
     ))
     print(_color("  bar = 30s window finite ratio (██=≥0.9  █▒=≥0.6  █ =≥0.3  "
@@ -582,7 +575,7 @@ def main() -> int:
         # Shallow sweep.
         sliced = stream.view_until(state.sim_time_s)
         state = run_shallow_loop(
-            state, fm=fm, clock=clock, signal=sliced,
+            state, clock=clock, signal=sliced,
             modalities=modalities, llm_client=None,
         )
 
@@ -595,7 +588,7 @@ def main() -> int:
             sliced = stream.view_until(state.sim_time_s)
             t_deep0 = time.perf_counter()
             state = run_deep_brief(
-                state, fm=fm, clock=clock, signal=sliced,
+                state, clock=clock, signal=sliced,
                 modalities=modalities, trigger_reason=reason, llm_client=None,
             )
             deep_ms = (time.perf_counter() - t_deep0) * 1000.0

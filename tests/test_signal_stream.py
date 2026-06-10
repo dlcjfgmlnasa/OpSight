@@ -139,7 +139,6 @@ def test_graph_uses_streaming_when_signal_stream_passed(tmp_path):
     """Graph 가 streaming 으로 동작 — tool 이 받는 signal 길이가 tick 마다 증가.
     Graph operates in streaming mode — tool-visible signal grows per tick.
     """
-    from opsight.fm.factory import create_fm
     from opsight.graph import build_graph
     from opsight.sim_clock import SimClock
     from opsight.state import AgentState
@@ -156,14 +155,11 @@ def test_graph_uses_streaming_when_signal_stream_passed(tmp_path):
         ),
     }
     stream = stream_from_full_signal(sig, default_sampling_rate_hz=1.0)
-    fm = create_fm({"fm": {"implementation": "mock_rule_based",
-                            "config": {"seed": 42, "sampling_rate_hz": 1.0,
-                                       "noise_pct": 0.0}}})
     clock = SimClock(start_s=0.0)
     trace_path = tmp_path / "stream.jsonl"
     with TraceWriter(trace_path, trace_id="t1", case_id="c1") as tw:
         graph = build_graph(
-            fm=fm, clock=clock,
+            clock=clock,
             signal_stream=stream,
             modalities=["ABP", "HR"],
             max_ticks=3, tick_sim_advance_s=60.0,
@@ -188,7 +184,6 @@ def test_graph_legacy_signal_dict_still_works():
     """Backward compat — 기존 signal=... 패턴이 여전히 작동.
     Legacy signal=... 패턴 backward compat.
     """
-    from opsight.fm.factory import create_fm
     from opsight.graph import build_graph
     from opsight.sim_clock import SimClock
     from opsight.state import AgentState
@@ -197,11 +192,9 @@ def test_graph_legacy_signal_dict_still_works():
         "ABP": torch.full((600,), 80.0, dtype=torch.float32),
         "HR": torch.full((600,), 75.0, dtype=torch.float32),
     }
-    fm = create_fm({"fm": {"implementation": "mock_rule_based",
-                            "config": {"seed": 42, "sampling_rate_hz": 1.0}}})
     clock = SimClock(start_s=0.0)
     graph = build_graph(
-        fm=fm, clock=clock, signal=sig,
+        clock=clock, signal=sig,
         modalities=["ABP", "HR"],
         max_ticks=2, tick_sim_advance_s=60.0,
     )
@@ -215,29 +208,25 @@ def test_graph_legacy_signal_dict_still_works():
 
 
 def test_graph_rejects_both_signal_and_stream():
-    from opsight.fm.factory import create_fm
     from opsight.graph import build_graph
     from opsight.sim_clock import SimClock
 
     sig = {"ABP": torch.zeros(100, dtype=torch.float32)}
     stream = stream_from_full_signal(sig)
-    fm = create_fm({"fm": {"implementation": "mock_stub"}})
     clock = SimClock()
     with pytest.raises(ValueError, match="either signal OR signal_stream"):
         build_graph(
-            fm=fm, clock=clock, signal=sig, signal_stream=stream,
+            clock=clock, signal=sig, signal_stream=stream,
             modalities=["ABP"], max_ticks=1,
         )
 
 
 def test_graph_rejects_neither_signal_nor_stream():
-    from opsight.fm.factory import create_fm
     from opsight.graph import build_graph
     from opsight.sim_clock import SimClock
 
-    fm = create_fm({"fm": {"implementation": "mock_stub"}})
     clock = SimClock()
     with pytest.raises(ValueError, match="must pass signal or signal_stream"):
         build_graph(
-            fm=fm, clock=clock, modalities=["ABP"], max_ticks=1,
+            clock=clock, modalities=["ABP"], max_ticks=1,
         )

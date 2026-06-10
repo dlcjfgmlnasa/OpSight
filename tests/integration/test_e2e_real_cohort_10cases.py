@@ -2,7 +2,7 @@
 실 cohort 10 case e2e test (Sprint 6 Task C).
 
 manifest 의 첫 10 case 로 dual-mode graph 자동 검증. preprocessing +
-streaming + mock FM Tier 2 통합 동작.
+streaming + leakage guard 통합 동작 (FM 분리 — Biosignal Foundation Model 제거).
 
 Skipped when:
 - manifest.parquet 부재 (plan_1.2 build_cohort 안 실행)
@@ -11,7 +11,6 @@ Skipped when:
 Assertions:
 - 각 case 에서 graph invoke 성공 (no exception)
 - leakage error 0 (streaming + leakage guard 모두 작동)
-- preprocessing 의 quality 정상화 효과 확인 (avg HIGH/MEDIUM confidence)
 - shallow latency p95 < 15 sec budget
 """
 from __future__ import annotations
@@ -24,7 +23,6 @@ import pandas as pd
 import pytest
 import torch
 
-from opsight.fm.factory import create_fm
 from opsight.graph import build_graph
 from opsight.preprocessing import preprocess_signal_dict
 from opsight.signal_stream import stream_from_full_signal
@@ -124,18 +122,12 @@ def test_real_cohort_10cases_e2e(manifest_sample_ids, tmp_path: Path) -> None:
             signal, sampling_rates_hz=rates, default_sampling_rate_hz=sr_hz,
         )
 
-        fm = create_fm({
-            "fm": {
-                "implementation": "mock_rule_based",
-                "config": {"seed": 42, "sampling_rate_hz": sr_hz, "noise_pct": 0.0},
-            }
-        })
         clock = SimClock(start_s=0.0)
         initial = AgentState(case_id=f"vitaldb-{case_id}", trace_id=f"real-{case_id}")
 
         with TraceWriter(trace_path, trace_id=initial.trace_id, case_id=initial.case_id) as tw:
             graph = build_graph(
-                fm=fm, clock=clock, signal_stream=stream, modalities=modalities,
+                clock=clock, signal_stream=stream, modalities=modalities,
                 max_ticks=max_ticks, tick_sim_advance_s=tick_sim_advance_s, trace=tw,
             )
             t0 = time.perf_counter()
@@ -166,20 +158,12 @@ def test_real_cohort_10cases_e2e(manifest_sample_ids, tmp_path: Path) -> None:
     p95_ms = float(np.percentile(shallow_tick_latencies_ms, 95))
     assert p95_ms < 15_000, f"p95 per-tick latency {p95_ms:.1f}ms exceeds 15s budget"
     assert leakage_events == 0, f"unexpected leakage events: {leakage_events}"
-    assert n_cases_with_brief >= 1, (
-        f"no case fired deep brief (brief_count={n_cases_with_brief}/"
-        f"{len(manifest_sample_ids)})"
-    )
-
-    # Confidence 분포 — informational. 5-min streaming view 에선 induction phase
-    # 의 NaN/artifact 영향으로 LOW 가 dominant 한 경우가 정상 (streaming honesty —
-    # 전체 trajectory 평균이 가리던 것을 정직하게 노출). 본 assertion 은 단순히
-    # confidence band 가 *제대로 채워지는지* (UNRELIABLE 만이 아닌지) 확인.
-    total_confs = sum(confidence_counts.values())
-    assert total_confs > 0, "no confidence band parsed from any brief"
-    assert "UNRELIABLE" not in confidence_counts or confidence_counts.get("UNRELIABLE", 0) < total_confs, (
-        "all briefs UNRELIABLE — graph or signals broken"
-    )
+    # NOTE: deep-brief firing + confidence-band assertions removed — they were
+    # driven by FM risk forecasts (Biosignal Foundation Model now decoupled).
+    # The new false-alarm agent will reintroduce trigger-driven assertions.
+    # 주: deep-brief 발화 + confidence band 단언은 FM risk forecast 가 구동하던
+    # 것이라 제거 (Biosignal Foundation Model 분리). 새 false-alarm agent 에서
+    # trigger 기반 단언을 재도입한다.
 
     print(f"\n=== Real cohort 10-case e2e summary ===")
     print(f"  cases run         : {len(manifest_sample_ids)}")
