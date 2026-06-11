@@ -15,7 +15,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from opsight.tools.envelope import ToolResponse
+from opsight.envelope import ToolResponse
 
 
 Mode = Literal["shallow", "deep"]

@@ -37,7 +37,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from opsight.tools.envelope import ToolResponse
+    from opsight.envelope import ToolResponse
 
 
 @runtime_checkable

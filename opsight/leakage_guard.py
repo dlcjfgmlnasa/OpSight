@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from opsight.tools.envelope import ToolError, ToolRequest, ToolResponse
+from opsight.envelope import ToolError, ToolRequest, ToolResponse
 
 if TYPE_CHECKING:
     from opsight.sim_clock import SimClock

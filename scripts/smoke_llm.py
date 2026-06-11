@@ -48,8 +48,8 @@ if str(REPO_ROOT) not in sys.path:
 from opsight.llm.vllm_client import VLLMClient
 from opsight.preprocessing import preprocess_signal_dict
 from opsight.sim_clock import SimClock
-from opsight.tools.envelope import ToolRequest, ToolResponse
-from opsight.tools.registry import SHALLOW_TOOL_NAMES, TOOLS, call_tool
+from opsight.envelope import ToolRequest, ToolResponse
+from opsight.registry import SHALLOW_TOOL_NAMES, TOOLS, call_tool
 
 # Reuse the well-tested loader from run_real_case (track set + alias map).
 # run_real_case 의 검증된 loader 재사용 (track 세트 + alias map 동일).

@@ -51,8 +51,8 @@ from opsight.preprocessing import preprocess_signal_dict
 from opsight.signal_stream import stream_from_full_signal
 from opsight.sim_clock import SimClock
 from opsight.state import AgentState
-from opsight.tools.envelope import ToolRequest, ToolResponse
-from opsight.tools.registry import call_tool
+from opsight.envelope import ToolRequest, ToolResponse
+from opsight.registry import call_tool
 from opsight.triggers import should_escalate
 
 

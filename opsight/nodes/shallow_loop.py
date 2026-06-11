@@ -15,8 +15,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from opsight.state import AgentState
-from opsight.tools.envelope import ToolRequest, ToolResponse
-from opsight.tools.registry import SHALLOW_TOOL_NAMES, call_tool
+from opsight.envelope import ToolRequest, ToolResponse
+from opsight.registry import SHALLOW_TOOL_NAMES, call_tool
 
 if TYPE_CHECKING:
     import torch

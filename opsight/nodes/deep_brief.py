@@ -17,8 +17,8 @@ import time
 from typing import TYPE_CHECKING
 
 from opsight.state import AgentState, BriefRecord
-from opsight.tools.envelope import ToolRequest, ToolResponse
-from opsight.tools.registry import TOOLS, call_tool
+from opsight.envelope import ToolRequest, ToolResponse
+from opsight.registry import TOOLS, call_tool
 
 if TYPE_CHECKING:
     import torch

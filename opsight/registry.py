@@ -29,7 +29,7 @@ from opsight.tools.auxiliary_tools import (
     tool_quality_aware_synthesis,
     tool_surgery_context_awareness,
 )
-from opsight.tools.envelope import ToolRequest, ToolResponse
+from opsight.envelope import ToolRequest, ToolResponse
 from opsight.tools.signal_state_tools import (
     tool_assess_variability,
     tool_compare_to_baseline,

@@ -90,4 +90,75 @@ class ToolResponse(BaseModel):
         return self.error is None
 
 
-__all__ = ["ToolRequest", "ToolResponse", "ToolError"]
+# ── Shared response constructors / 공유 응답 생성자 ──
+# Every tool builds its ToolResponse through these so the envelope shape and the
+# ``category`` provenance marker are created in exactly one place. Per-category
+# packages (signal_state, auxiliary, ...) wrap these with their category baked in
+# — mirroring the leakage_guard primitive + thin-wrapper pattern.
+# 모든 tool 이 이 두 생성자로 ToolResponse 를 만들어 envelope 모양과 ``category``
+# provenance 마커를 단일 지점에서 생성한다. 카테고리별 패키지는 category 를
+# 박은 thin wrapper 로 감싼다 (leakage_guard primitive + wrapper 패턴과 동일).
+
+
+def ok(
+    request: ToolRequest,
+    result: dict[str, Any],
+    latency_ms: float,
+    *,
+    category: str | None = None,
+    quality_meta: dict[str, Any] | None = None,
+) -> ToolResponse:
+    """Build a success ``ToolResponse``.
+    성공 ``ToolResponse`` 생성.
+
+    ``category`` (when given) seeds ``quality_meta["category"]``; any extra
+    ``quality_meta`` keys are merged on top.
+    ``category`` 가 주어지면 ``quality_meta["category"]`` 를 채우고, 추가
+    ``quality_meta`` key 를 그 위에 병합한다.
+    """
+    qm: dict[str, Any] = {}
+    if category is not None:
+        qm["category"] = category
+    if quality_meta:
+        qm.update(quality_meta)
+    return ToolResponse(
+        case_id=request.case_id,
+        sim_time_s=request.sim_time_s,
+        tool_name=request.tool_name,
+        args=dict(request.args),
+        result=result,
+        quality_meta=qm,
+        latency_ms=latency_ms,
+    )
+
+
+def error_response(
+    request: ToolRequest,
+    err_type: str,
+    message: str,
+    latency_ms: float,
+    *,
+    category: str | None = None,
+    extra: dict[str, Any] | None = None,
+    quality_meta: dict[str, Any] | None = None,
+) -> ToolResponse:
+    """Build a failure ``ToolResponse`` carrying a structured ``ToolError``.
+    구조화된 ``ToolError`` 를 담은 실패 ``ToolResponse`` 생성.
+    """
+    qm: dict[str, Any] = {}
+    if category is not None:
+        qm["category"] = category
+    if quality_meta:
+        qm.update(quality_meta)
+    return ToolResponse(
+        case_id=request.case_id,
+        sim_time_s=request.sim_time_s,
+        tool_name=request.tool_name,
+        args=dict(request.args),
+        error=ToolError(type=err_type, message=message, extra=extra or {}),
+        quality_meta=qm,
+        latency_ms=latency_ms,
+    )
+
+
+__all__ = ["ToolRequest", "ToolResponse", "ToolError", "ok", "error_response"]

@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from opsight.tools.envelope import ToolResponse
+    from opsight.envelope import ToolResponse
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
