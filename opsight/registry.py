@@ -14,11 +14,15 @@ Tool category map (project_brief §7):
 Tool 카테고리 (project_brief §7):
 - Auxiliary tools                 — opsight/tools/auxiliary_tools.py
 - Signal-state tools (ADR-016, amended 2026-06-10) — opsight/tools/signal_state_tools/ (package)
+- EMR tools (preop patient context) — opsight/tools/emr_tools/ (package)
 
-NOTE: FM-backed tools, EMR/drug-lookup tools, knowledge stubs, and the
+NOTE: FM-backed tools, the EMR/drug-lookup group, knowledge stubs, and the
 mock/placeholder LLM were removed during the false-alarm-agent rebuild.
-주: FM 기반 tool, EMR/약물 lookup tool, knowledge stub, mock/placeholder LLM 은
-false-alarm-agent 재작성 과정에서 제거됨.
+``get_patient_context`` (preop-safe, leakage-free) is the first revived EMR
+member; the rest stay deferred to Stage 2.
+주: FM 기반 tool, EMR/약물 lookup 그룹, knowledge stub, mock/placeholder LLM 은
+false-alarm-agent 재작성에서 제거됨. ``get_patient_context`` (preop-safe·누수 0) 만
+먼저 부활했고 나머지 EMR tool 은 Stage 2 로 deferred.
 """
 from __future__ import annotations
 
@@ -29,6 +33,7 @@ from opsight.tools.auxiliary_tools import (
     tool_quality_aware_synthesis,
     tool_surgery_context_awareness,
 )
+from opsight.tools.emr_tools import tool_get_patient_context
 from opsight.envelope import ToolRequest, ToolResponse
 from opsight.tools.signal_state_tools import (
     tool_assess_variability,
@@ -93,6 +98,19 @@ TOOLS: Final[dict[str, ToolSpec]] = {
             "No LLM call inside."
         ),
         fn=tool_quality_aware_synthesis,
+    ),
+    # EMR tools — preop patient context (first revived member; rest Stage 2)
+    "get_patient_context": ToolSpec(
+        name="get_patient_context",
+        category="emr",
+        description=(
+            "Preoperative patient context from VitalDB cases metadata — "
+            "age/sex/bmi, ASA, department/opname/diagnosis. Leakage-free "
+            "(preop-safe whitelist; never reads postop/outcome/intraop_* "
+            "columns). Returns values only; clinical interpretation deferred "
+            "to the brief LLM with [CLINICIAN-REVIEW]. Brief §[Surgery context] source."
+        ),
+        fn=tool_get_patient_context,
     ),
     # Signal Access tools (ADR-016) — plan_1.3.5
     # Signal Access tool (ADR-016) — plan_1.3.5
