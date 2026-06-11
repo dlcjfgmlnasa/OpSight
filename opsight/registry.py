@@ -152,7 +152,9 @@ TOOLS: Final[dict[str, ToolSpec]] = {
         name="summarize_current_state",
         category="signal_state",
         description=(
-            "Integrated current state assessment (rule-based threshold path). "
+            "Integrated current state assessment (rule-based threshold path) — "
+            "synthesizes get_current_state snapshot + get_signal_trend direction "
+            "so a threshold breach reports whether the vital is falling/rising. "
             "ADR-018: rule-based is the accepted Phase 1 implementation; "
             "ADR-014 Tier 0 supervised head deferred. Mandatory conditional "
             "phrasing + [CLINICIAN-REVIEW] marker."

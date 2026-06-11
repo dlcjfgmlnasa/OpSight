@@ -19,7 +19,8 @@ hierarchy** (한 tool = 한 모듈, modality-agnostic):
     │   ├── assess_variability/    — HRV / BPV / SVV (family 별 모듈로 분리)
     │   └── compare_to_baseline    — preop / intraop-early baseline 대비 변화
     └── summarize.py           ← ★ 합성(apex) tool ``summarize_current_state``.
-                                  extractors 를 엮어 rule-based 통합 상태 평가.
+                                  extractors 를 엮어 rule-based 통합 상태 평가
+                                  (snapshot + trend).
 
 의존 트리의 꼭대기는 ``summarize_current_state`` 하나뿐이며 (extractors 를 호출),
 나머지 5개는 모두 leaf 다. 폴더만 봐도 "누가 누구를 부르는지"가 드러난다.

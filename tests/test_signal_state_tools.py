@@ -508,6 +508,47 @@ def test_tool21_leakage_violation(clock):
     assert r.error.type == "leakage_violation"
 
 
+def test_tool21_low_map_with_falling_trend_notes_direction(clock):
+    """MAP 임계값 미만 + 하강 ramp → concern 에 '하강 추세' 절이 붙고
+    trend_directions 가 falling 을 보고한다 (순간값 vs 지속 drift 구분).
+    """
+    ramp = np.linspace(75.0, 58.0, 300, dtype=np.float32)  # 하강 → 최근 ≈ 58 < 65
+    sig = {
+        "MAP": torch.from_numpy(ramp),
+        "HR": torch.from_numpy(np.full(300, 75.0, dtype=np.float32)),
+        "SpO2": torch.from_numpy(np.full(300, 98.0, dtype=np.float32)),
+        "BIS": torch.from_numpy(np.full(300, 50.0, dtype=np.float32)),
+    }
+    r = tool_summarize_current_state(
+        _req("summarize_current_state", {}), clock, sig,
+    )
+    assert r.ok
+    res = r.result
+    assert res["hemodynamic_state"] == "caution_low_pressure"
+    map_concern = next(c for c in res["key_concerns"] if c.startswith("MAP"))
+    assert "하강 추세" in map_concern
+    assert "가능성을 시사함" in map_concern  # 조건문 어조 유지
+    assert res["trend_directions"].get("map_mmHg") == "falling"
+
+
+def test_tool21_stable_low_map_omits_trend_clause(clock):
+    """상수(stable) 저MAP → concern 은 남되 추세 절('추세')은 붙지 않는다.
+    stable/unknown 은 절을 생략해 falling/rising 의 salience 를 보존.
+    """
+    sig = {
+        "MAP": torch.from_numpy(np.full(300, 58.0, dtype=np.float32)),
+        "HR": torch.from_numpy(np.full(300, 75.0, dtype=np.float32)),
+    }
+    r = tool_summarize_current_state(
+        _req("summarize_current_state", {}), clock, sig,
+    )
+    assert r.ok
+    res = r.result
+    map_concern = next(c for c in res["key_concerns"] if c.startswith("MAP"))
+    assert "추세" not in map_concern
+    assert res["trend_directions"].get("map_mmHg") == "stable"
+
+
 def test_tool21_multiple_concerns_counted_in_overall(clock):
     """저MAP + 빈맥 + BIS 과심도 → 3개 축에서 동시에 concern 누적.
     overall_assessment 가 "N건" 으로 집계하고 각 state 가 독립적으로 분기.
