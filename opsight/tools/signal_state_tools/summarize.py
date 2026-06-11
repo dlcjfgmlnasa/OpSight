@@ -12,7 +12,7 @@ from opsight.tools.signal_state_tools._common import (
     _leakage_guard,
     _ok,
 )
-from opsight.tools.signal_state_tools.get_current_state import tool_get_current_state
+from opsight.tools.signal_state_tools.extractors import tool_get_current_state
 
 if TYPE_CHECKING:
     import torch

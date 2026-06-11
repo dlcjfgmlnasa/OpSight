@@ -1,4 +1,4 @@
-"""HR family → heart-rate variability (HRV), self-implemented (pure numpy).
+﻿"""HR family → heart-rate variability (HRV), self-implemented (pure numpy).
 HR family → 심박 변이도 (HRV), 자체 구현 (순수 numpy, NeuroKit2 미사용).
 
 Time-domain SDNN / RMSSD + frequency-domain LF/HF via Welch PSD on the
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from opsight.tools.signal_state_tools.assess_variability._welch import welch_psd
+from opsight.tools.signal_state_tools.extractors.assess_variability._welch import welch_psd
 
 
 # Frequency-domain HRV constants (Task Force 1996 standard bands).
