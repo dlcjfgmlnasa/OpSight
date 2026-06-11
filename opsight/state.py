@@ -15,7 +15,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from opsight.tools.envelope import ToolResponse
+from opsight.envelope import ToolResponse
 
 
 Mode = Literal["shallow", "deep"]
@@ -65,7 +65,7 @@ class BriefRecord(BaseModel):
 
 
 class AgentState(BaseModel):
-    """Mutable LangGraph state for VitalAgent / VitalAgent LangGraph state.
+    """Mutable LangGraph state for OpSight / OpSight LangGraph state.
 
     Pydantic ``BaseModel`` for typed validation. State is intended to be
     *replaced* by node functions returning a new ``AgentState`` (functional
@@ -106,6 +106,20 @@ class AgentState(BaseModel):
     risk_history: list[RiskSample] = Field(default_factory=list)
     quality_history: list[QualitySample] = Field(default_factory=list)
     brief_history: list[BriefRecord] = Field(default_factory=list)
+
+    # ── Case-level static context (ADR-018) / Case 수준 정적 맥락 (ADR-018) ──
+    case_baseline: dict[str, Any] | None = None
+    """Case-level patient baseline cached at case-init (ADR-018).
+    Case-init phase 에서 query_patient_baseline 1회 호출 결과를 캐시 (ADR-018).
+
+    Populated ONCE at graph entry by the case-init node and injected into all
+    subsequent shallow / deep narration prompts. ``None`` until case-init runs.
+    Graph 진입 시 case-init node 가 1회 채우고, 후속 shallow / deep narration
+    prompt 에 자동 주입된다. case-init 실행 전에는 ``None``.
+
+    Schema mirrors ``tool_query_patient_baseline`` output:
+        {age, sex, asa, comorbidities, baseline_bp, labs: {...}}
+    """
 
     # ── Trigger bookkeeping / Trigger 추적 ──
     last_deep_trigger_time_s: float | None = None

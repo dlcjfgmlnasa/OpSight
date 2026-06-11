@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from opsight.tools.envelope import ToolResponse
+    from opsight.envelope import ToolResponse
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -235,26 +235,49 @@ def _parse_9_section_brief(text: str) -> dict[str, str]:
     Heavy LLM 출력을 9-section dict 로 parse.
 
     Strategy:
-        1. Find ``[Section name]`` markers (regex).
-        2. Slice between consecutive markers.
-        3. Missing sections → empty string (LLM forgot to render).
+        1. Locate each *known* section header, tolerating common markdown
+           decorations the model adds despite the prompt: ``**[X]**``, ``## [X]``,
+           ``### [X]``, ``[X]:``, trailing ``*``/``:``, and header-on-same-line
+           bodies. Matching is by the canonical section name (case-insensitive).
+        2. Slice body text between consecutive located headers.
+        3. Missing sections → empty string.
 
-    LLM 의 9-section 출력은 ``[Surgery context]\\n...\\n[Signal status]\\n...``
-    형식이라 가정. Section 누락 시 빈 문자열로 채움.
+    NB (Sprint 7.14): the earlier parser required a bare ``[X]`` followed by a
+    newline, so 8B/70B output wrapping headers in markdown bold (``**[X]**``)
+    produced 0/9 parsed sections even though all sections were present. This
+    version is markdown-tolerant.
+    이전 parser 는 ``[X]\\n`` 만 인식 → 모델이 ``**[X]**`` 로 감싸면 9/9 생성해도
+    0/9 parse 됐음. 본 버전은 markdown 관용.
     """
-    # Pattern: '\n[Section Name]\n' at line start (also handle start-of-text)
-    # Pattern: 줄 시작에 '[Section Name]'
-    pattern = re.compile(r"(?:^|\n)\[([^\]]+)\]\s*\n", re.MULTILINE)
-    matches = list(pattern.finditer(text))
     parsed: dict[str, str] = {name: "" for name in _BRIEF_SECTIONS}
+    canonical = {name.lower(): name for name in _BRIEF_SECTIONS}
+
+    # Generic header matcher (markdown-tolerant): optional leading markdown
+    # (#, *, whitespace), then ``[Anything]``, then optional trailing ``:``/``*``.
+    # Must sit at line start (^ or after \n) so inline ``[CLINICIAN-REVIEW: ...]``
+    # mid-sentence is not treated as a header.
+    # 일반 header matcher (markdown 관용). 줄 시작에 있어야 하므로 문장 중간
+    # 의 ``[CLINICIAN-REVIEW: ...]`` 는 header 로 오인하지 않음.
+    header_pat = re.compile(
+        r"(?:^|\n)[ \t]*(?:[#*]+[ \t]*)?\[([^\]]+)\](?:[ \t]*[:*]+)?[ \t]*\n?",
+        re.MULTILINE,
+    )
+    # Exclude our own [CLINICIAN-REVIEW ...] marker from header boundaries so it
+    # stays inside section bodies (even when emitted on its own line).
+    # 자체 [CLINICIAN-REVIEW ...] marker 는 boundary 에서 제외 → 본문에 남김.
+    matches = [
+        m for m in header_pat.finditer(text)
+        if not m.group(1).strip().upper().startswith("CLINICIAN-REVIEW")
+    ]
 
     for i, m in enumerate(matches):
-        name = m.group(1).strip()
-        if name not in parsed:
-            continue  # unknown section ignored
+        key = canonical.get(m.group(1).strip().lower())
         body_start = m.end()
         body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        parsed[name] = text[body_start:body_end].strip()
+        if key is None:
+            continue  # unknown header — used as a boundary but not stored
+        body = text[body_start:body_end].strip().strip("*").strip()
+        parsed[key] = body
 
     # Preserve canonical order
     return {name: parsed[name] for name in _BRIEF_SECTIONS}

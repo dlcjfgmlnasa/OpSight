@@ -18,33 +18,14 @@ import math
 import time
 from typing import TYPE_CHECKING, Any
 
-from opsight.tools.envelope import ToolError, ToolRequest, ToolResponse
+from opsight.envelope import (
+    ToolRequest,
+    ToolResponse,
+    error_response as _error_response,
+)
 
 if TYPE_CHECKING:
     from opsight.sim_clock import SimClock
-
-
-# ── Helpers / 헬퍼 ──
-
-
-def _error_response(
-    request: ToolRequest,
-    err_type: str,
-    message: str,
-    latency_ms: float,
-    *,
-    extra: dict[str, Any] | None = None,
-    quality_meta: dict[str, Any] | None = None,
-) -> ToolResponse:
-    return ToolResponse(
-        case_id=request.case_id,
-        sim_time_s=request.sim_time_s,
-        tool_name=request.tool_name,
-        args=dict(request.args),
-        error=ToolError(type=err_type, message=message, extra=extra or {}),
-        quality_meta=quality_meta or {},
-        latency_ms=latency_ms,
-    )
 
 
 # ── Tool 15 — surgery_context_awareness (yaml-backed, plan_1.5 완료) ──
@@ -148,7 +129,7 @@ def tool_surgery_context_awareness(
             phase_hint = (
                 f"본 phase ({phase}) 에서 흔한 hemodynamic 변동을 임상의가 확인할 수 있다."
             )
-            clinical_review_marker = "[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]"
+            clinical_review_marker = "[CLINICIAN-REVIEW: 의료진 검토 필요]"
 
     # Always append clinical_review_marker to phase_hint if present.
     if clinical_review_marker and clinical_review_marker not in phase_hint:

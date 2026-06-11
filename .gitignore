@@ -34,6 +34,7 @@ docs/notebooks/_cache/*.csv
 data/cohort/*.parquet
 data/runs/*.jsonl
 data/runs/*.json
+reports/
 
 # Logs
 *.log

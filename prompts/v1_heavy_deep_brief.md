@@ -149,13 +149,13 @@ Similar case 검색 tool (find_similar_cases) 가 본 prototype 단계에서 미
 저혈압 risk 가 5분 horizon 에서 0.82 로 상승 추세를 보이며, MAP 하강이 일관
 되게 관찰된다. Vasopressor / 수액 / 마취 심도 조정 여부는 임상의의 판단이
 필요할 수 있다. 본 brief 는 의사 결정 *보조* 자료이며 처방 권고가 아니다.
-[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]
+[CLINICIAN-REVIEW: 의료진 검토 필요]
 
 [Limitations]
 본 brief 는 mock FM (rule_based tier) 출력에 기반하며, EMR tool 일부는 stub
 데이터를 사용한다 (마취제 / 수액). Similar trajectory 와 intervention response
 예측 tool (13, 14) 은 미구현. 본 brief 는 임상 판단의 대체가 아니며 임상의
-검토 후 활용해야 한다. [CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]
+검토 후 활용해야 한다. [CLINICIAN-REVIEW: 의료진 검토 필요]
 ```
 
 ### 절대 금지
@@ -190,4 +190,4 @@ User context 에 `language=en` 가 명시되면 영문 brief. 이 경우 section
 |---------|------|--------|
 | v1 | 2026-05-17 | Initial — plan_1.6 |
 
-[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요] (본 prompt 자체 + 예시 brief 에 대한 검토)
+[CLINICIAN-REVIEW: 의료진 검토 필요] (본 prompt 자체 + 예시 brief 에 대한 검토)

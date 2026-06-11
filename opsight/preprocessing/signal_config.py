@@ -6,7 +6,7 @@ clinical context 에 필요한 *minimum* field 만 포팅 — physiological rang
 expected sampling rate, NaN-gap interpolation 정책.
 
 ⚠️ 모든 physiological range / 임계 는 lit-standard heuristic 이며 임상의
-검토 대상: ``[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요]``.
+검토 대상: ``[CLINICIAN-REVIEW: 의료진 검토 필요]``.
 """
 from __future__ import annotations
 
@@ -82,7 +82,7 @@ class SignalConfig:
 
 # ── Per-modality registry / Modality 별 registry ──
 # Reference: BFM SignalConfig (vitaldb.py) + brief §4, docs/vitaldb_catalog.md §3.
-# [CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요] — 본 range 들.
+# [CLINICIAN-REVIEW: 의료진 검토 필요] — 본 range 들.
 
 SIGNAL_CONFIGS: dict[str, SignalConfig] = {
     # ABP family — all MAP/SBP/DBP fall in similar range
@@ -119,8 +119,56 @@ SIGNAL_CONFIGS: dict[str, SignalConfig] = {
         unit="mmHg",
         max_nan_gap_s=2.0,
     ),
+    # CVP family — central venous pressure (filling pressure proxy).
+    # brief §1: 6 pretraining modality 중 하나. VitalDB 가용성 ~25%.
+    # [CLINICIAN-REVIEW: 의료진 검토 필요] — physiological_min/max,
+    # 호흡 swing 처리 정책.
+    "CVP": SignalConfig(
+        name="CVP",
+        physiological_min=-15.0,
+        physiological_max=50.0,  # generous, allows respiratory swing + cough artifact
+        typical_sampling_rate_hz=500.0,  # SNUADC native
+        is_waveform=True,  # → 100 Hz resample
+        unit="mmHg",
+        max_nan_gap_s=1.0,
+    ),
+    "CVP_MEAN": SignalConfig(
+        name="CVP_MEAN",
+        physiological_min=-5.0,
+        physiological_max=30.0,  # normal 0–15; tamponade / cor pulmonale 시 상승
+        typical_sampling_rate_hz=1.0,  # Solar8000/CVP, EV1000/CVP
+        unit="mmHg",
+        max_nan_gap_s=2.0,
+    ),
+    # PAP family — pulmonary artery pressure (Swan-Ganz catheter).
+    # brief §1: 6 pretraining modality 중 하나. VitalDB 가용성 ~1.3% (수술 종류 제한).
+    # [CLINICIAN-REVIEW: 의료진 검토 필요] — pulmonary HTN range.
+    "PAP_MBP": SignalConfig(
+        name="PAP_MBP",
+        physiological_min=5.0,
+        physiological_max=60.0,  # normal ~15; severe pulmonary HTN > 40
+        typical_sampling_rate_hz=1.0,
+        unit="mmHg",
+        max_nan_gap_s=2.0,
+    ),
+    "PAP_SBP": SignalConfig(
+        name="PAP_SBP",
+        physiological_min=10.0,
+        physiological_max=90.0,  # normal ~25; severe pulm HTN > 60
+        typical_sampling_rate_hz=1.0,
+        unit="mmHg",
+        max_nan_gap_s=2.0,
+    ),
+    "PAP_DBP": SignalConfig(
+        name="PAP_DBP",
+        physiological_min=0.0,
+        physiological_max=50.0,
+        typical_sampling_rate_hz=1.0,
+        unit="mmHg",
+        max_nan_gap_s=2.0,
+    ),
     # NIBP — wider tolerance + sparser sampling (cuff)
-    "Solar8000/NIBP_MBP": SignalConfig(
+    "NIBP_MBP": SignalConfig(
         name="NIBP_MBP",
         physiological_min=30.0,
         physiological_max=220.0,
@@ -205,10 +253,19 @@ SIGNAL_CONFIGS: dict[str, SignalConfig] = {
         unit="mmHg",
         max_nan_gap_s=2.0,
     ),
-    # BIS (0–100)
+    # BIS (1–100)
+    # NB: physiological_min = 1.0 (not 0). BIS = 0 in raw VitalDB indicates
+    # the sensor was not yet attached (or detached) — it is a sentinel, not a
+    # real measurement (BIS 0 in a living patient means deep coma / EEG
+    # isoelectric, a perioperative impossibility outside of brain-death exams).
+    # Filtering 0 → NaN prevents the live view from showing a fake BIS reading
+    # of 0 during sensor-induction phase (see case 13 BIS=0 → 92 jump).
+    # BIS=0 은 raw VitalDB 에서 센서 미부착 sentinel. 살아있는 환자에 BIS=0
+    # 은 임상적으로 불가능 (뇌사 검사 외). 0 → NaN 처리로 induction phase 의
+    # 가짜 0 reading 차단 (case 13 BIS=0 → 92 점프 참조).
     "BIS": SignalConfig(
         name="BIS",
-        physiological_min=0.0,
+        physiological_min=1.0,
         physiological_max=100.0,
         typical_sampling_rate_hz=1.0,
         unit="",
@@ -238,6 +295,14 @@ _ALIAS_MAP: dict[str, str] = {
     "Solar8000/NIBP_SBP": "SBP",
     "Solar8000/ART_DBP": "DBP",
     "Solar8000/NIBP_DBP": "DBP",
+    # CVP family — waveform vs numeric routed to distinct configs.
+    "SNUADC/CVP": "CVP",
+    "Solar8000/CVP": "CVP_MEAN",
+    "EV1000/CVP": "CVP_MEAN",
+    # PAP family (Solar8000 only — Swan-Ganz numerics)
+    "Solar8000/PA_MBP": "PAP_MBP",
+    "Solar8000/PA_SBP": "PAP_SBP",
+    "Solar8000/PA_DBP": "PAP_DBP",
     # HR
     "Solar8000/HR": "HR",
     "Solar8000/PLETH_HR": "HR",
@@ -250,10 +315,18 @@ _ALIAS_MAP: dict[str, str] = {
     # EEG (BIS)
     "BIS/EEG1_WAV": "EEG",
     "BIS/EEG2_WAV": "EEG",
-    # CO2 waveform
+    # CO2 waveform — both short and canonical aliases route to CO2_WAV config.
+    # CO2 waveform — 짧은 alias / 정식 이름 모두 CO2_WAV config 로 라우팅.
+    "CO2": "CO2_WAV",
     "Primus/CO2": "CO2_WAV",
     # Airway pressure
     "Primus/AWP": "AWP",
+    # Live-view aliases (scripts/live_view.py TRACK_TO_ALIAS) that map to
+    # canonical configs above. Without these the preprocessing pipeline would
+    # skip those modalities entirely (see preprocess_audit.py findings).
+    # live_view 의 alias 를 canonical config 로 매핑. 없으면 전처리 skip 됨.
+    "ECG": "ECG_II",
+    "Solar8000/NIBP_MBP": "NIBP_MBP",
     # SpO2
     "SPO2": "SpO2",
     "Solar8000/PLETH_SPO2": "SpO2",

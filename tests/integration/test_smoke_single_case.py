@@ -15,8 +15,6 @@ StateGraph를 실행한다. 검증 항목:
 - Brief 9-section template renders end-to-end / 브리프 9 section 렌더링
 - Trace JSONL is captured / Trace JSONL 캡쳐
 - No data-leakage error during execution / 실행 중 data leakage error 없음
-- FM is consumed via Protocol only — no concrete-class import path in the
-  call graph / FM은 Protocol로만 소비 — concrete-class import 없음
 
 Run / 실행:
     .venv/Scripts/python.exe -m pytest tests/integration/test_smoke_single_case.py -v
@@ -24,15 +22,65 @@ Run / 실행:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import torch
 
-from opsight.fm.mock_stub import StubBiosignalFM
 from opsight.graph import build_graph
 from opsight.sim_clock import SimClock
 from opsight.state import AgentState
 from opsight.trace import TraceWriter, read_trace
+
+if TYPE_CHECKING:
+    from opsight.envelope import ToolResponse
+
+
+# ── Deterministic LLM test double ──
+# Production code intentionally has NO placeholder LLM (removed in the
+# false-alarm-agent rebuild); the brief is generated only by the vLLM-backed
+# client. This test-only double satisfies the ``LLMClient`` Protocol so the
+# end-to-end smoke test can verify the brief pipeline structure (9 sections +
+# Clinical Fact Guard markers) without a real model / GPU.
+# production 에는 placeholder LLM 이 없으므로(rebuild 에서 제거), brief 구조 검증을
+# 위해 ``LLMClient`` Protocol 을 만족하는 테스트 전용 double 을 둔다.
+
+
+class _DeterministicLLMClient:
+    """Deterministic ``LLMClient`` test double — no real model, no GPU."""
+
+    name = "deterministic-test-double"
+
+    _MARKER = "[CLINICIAN-REVIEW: 의료진 검토 필요]"
+    _SECTIONS = (
+        "Surgery context", "Signal status", "Assessment confidence",
+        "Risk evaluation", "Evidence", "Intraoperative context",
+        "Similar trajectory", "Recommendations", "Limitations",
+    )
+
+    def narrate(self, tool_results: list[ToolResponse]) -> str:
+        return f"[안정] {len(tool_results)}개 tool 결과 기반 narration (deterministic stub)."
+
+    def brief(
+        self,
+        tool_results: list[ToolResponse],
+        *,
+        surgery_type: str,
+        surgery_phase: str,
+        elapsed_min: float,
+    ) -> dict[str, str]:
+        n = len(tool_results)
+        sections = {
+            name: (
+                f"{name}: deterministic stub "
+                f"({surgery_type}/{surgery_phase}, {elapsed_min:.0f}min, {n} tool results)."
+            )
+            for name in self._SECTIONS
+        }
+        # Clinical Fact Guard markers required by the brief contract.
+        sections["Recommendations"] += " " + self._MARKER
+        sections["Limitations"] += " " + self._MARKER
+        return sections
 
 
 # ── Fixtures ──
@@ -63,7 +111,6 @@ def test_smoke_graph_runs_end_to_end(tmp_path: Path, signal, modalities) -> None
     """Graph runs without exceptions; both shallow and deep nodes fire.
     Graph가 예외 없이 실행; shallow + deep 모두 발화.
     """
-    fm = StubBiosignalFM(seed=42)
     clock = SimClock(start_s=0.0)
     trace_path = tmp_path / "trace.jsonl"
 
@@ -86,13 +133,13 @@ def test_smoke_graph_runs_end_to_end(tmp_path: Path, signal, modalities) -> None
         # 시작 시점에 on-demand=True로 set하여 첫 trigger 발화 보장.
         initial.scratch["clinician_on_demand"] = True
         graph = build_graph(
-            fm=fm,
             clock=clock,
             signal=signal,
             modalities=modalities,
             max_ticks=5,
             tick_sim_advance_s=30.0,
             trace=tw,
+            llm_client=_DeterministicLLMClient(),
         )
         final = graph.invoke(initial, {"recursion_limit": 50})
 
@@ -126,13 +173,7 @@ def test_smoke_graph_runs_end_to_end(tmp_path: Path, signal, modalities) -> None
     assert "[CLINICIAN-REVIEW" in first_brief.sections["Recommendations"]
     assert "[CLINICIAN-REVIEW" in first_brief.sections["Limitations"]
 
-    # 3) Risk samples accumulated across ticks.
-    # 3) Tick에 걸쳐 risk sample 누적.
-    assert len(final_state.risk_history) > 0
-    assert any(s.risk_type.startswith("hypotension") for s in final_state.risk_history)
-    assert any(s.risk_type.startswith("arrest") for s in final_state.risk_history)
-
-    # 4) Trace JSONL captured / Trace JSONL 캡쳐.
+    # 3) Trace JSONL captured / Trace JSONL 캡쳐.
     events = read_trace(trace_path)
     assert len(events) > 0
     event_types = {e["event"] for e in events}
@@ -149,13 +190,12 @@ def test_smoke_no_leakage_within_graph_run(tmp_path: Path, signal, modalities) -
     """No tool_result event reports a ``leakage_violation`` during the run.
     실행 중 어떤 tool_result도 ``leakage_violation``을 보고하지 않는다.
     """
-    fm = StubBiosignalFM(seed=42)
     clock = SimClock(start_s=0.0)
     trace_path = tmp_path / "trace.jsonl"
     initial = AgentState(case_id="c1", trace_id="t1", scratch={"clinician_on_demand": True})
     with TraceWriter(trace_path, trace_id="t1", case_id="c1") as tw:
         graph = build_graph(
-            fm=fm, clock=clock, signal=signal, modalities=modalities,
+            clock=clock, signal=signal, modalities=modalities,
             max_ticks=3, trace=tw,
         )
         graph.invoke(initial, {"recursion_limit": 50})
@@ -164,31 +204,3 @@ def test_smoke_no_leakage_within_graph_run(tmp_path: Path, signal, modalities) -
     assert tool_results, "expected at least one tool_result event"
     for e in tool_results:
         assert e["payload"]["ok"], f"unexpected tool failure: {e}"
-
-
-def test_no_concrete_fm_import_in_node_or_graph_module() -> None:
-    """Static check: ``opsight/nodes/`` and ``opsight/graph.py`` must
-    not import any concrete FM class. Only ``BiosignalFMInterface`` is allowed.
-    정적 검사: ``opsight/nodes/``와 ``opsight/graph.py``는 concrete FM
-    class를 import하지 않는다. ``BiosignalFMInterface``만 허용.
-    """
-    forbidden_names = (
-        "StubBiosignalFM",
-        "RuleBasedBiosignalFM",
-        "LightMLBiosignalFM",
-        "RealBiosignalFM",
-    )
-    targets = [
-        Path("opsight/nodes/__init__.py"),
-        Path("opsight/nodes/shallow_loop.py"),
-        Path("opsight/nodes/deep_brief.py"),
-        Path("opsight/graph.py"),
-    ]
-    root = Path(__file__).resolve().parents[2]
-    for rel in targets:
-        text = (root / rel).read_text(encoding="utf-8")
-        for name in forbidden_names:
-            assert name not in text, (
-                f"forbidden concrete FM class {name!r} found in {rel} — "
-                f"these modules must only import BiosignalFMInterface."
-            )

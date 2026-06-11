@@ -1,5 +1,5 @@
-"""Run dual-mode VitalAgent graph on a real VitalDB case (a-option script).
-실제 VitalDB case 로 dual-mode VitalAgent graph 실행 (a-option).
+"""Run dual-mode OpSight graph on a real VitalDB case (a-option script).
+실제 VitalDB case 로 dual-mode OpSight graph 실행 (a-option).
 
 End-to-end demo:
   1. manifest 에서 case_id 선택 (or CLI arg)
@@ -40,7 +40,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from opsight.fm.factory import create_fm
 from opsight.graph import build_graph
 from opsight.preprocessing import preprocess_signal_dict
 from opsight.signal_stream import stream_from_full_signal
@@ -150,21 +149,7 @@ def run_case(args: argparse.Namespace) -> dict:
         prep_report = None
         print(f"\n[preprocess] DISABLED (--no-preprocess). Raw signal used.")
 
-    # 3. Build FM with matching sampling rate
-    fm_cfg = {
-        "fm": {
-            "implementation": "mock_rule_based",
-            "config": {
-                "seed": 42,
-                "sampling_rate_hz": sr_hz,  # CRITICAL: match real sampling
-                "noise_pct": 0.0,
-            },
-        }
-    }
-    fm = create_fm(fm_cfg)
-    print(f"[FM] mock_rule_based (sampling_rate_hz={sr_hz})")
-
-    # 4. Build graph
+    # 3. Build graph (FM decoupled — Biosignal Foundation Model removed)
     clock = SimClock(start_s=0.0)
     runs_dir = REPO_ROOT / "data" / "runs"
     runs_dir.mkdir(parents=True, exist_ok=True)
@@ -190,7 +175,6 @@ def run_case(args: argparse.Namespace) -> dict:
     )
     with TraceWriter(trace_path, trace_id=initial.trace_id, case_id=initial.case_id) as tw:
         graph = build_graph(
-            fm=fm,
             clock=clock,
             signal_stream=stream,
             modalities=modalities,

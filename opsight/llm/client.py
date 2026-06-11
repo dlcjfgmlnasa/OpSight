@@ -1,17 +1,17 @@
 """LLM client Protocol + factory (Sprint 6 follow-up: vLLM wiring sketch).
 LLM client Protocol + factory (Sprint 6 follow-up: vLLM wiring sketch).
 
-Mirrors the ADR-011 pattern: agent / node code depends ONLY on the
-:class:`LLMClient` Protocol; concrete implementation (placeholder template OR
-vLLM-backed Llama 8B/70B) is selected by config.
-ADR-011 패턴 mirror — agent / node code 는 :class:`LLMClient` Protocol 에만
-의존; concrete 구현 (placeholder template / vLLM Llama) 은 config 로 선택.
+Agent / node code depends ONLY on the :class:`LLMClient` Protocol; the
+concrete implementation (vLLM-backed Llama 8B/70B) is selected by config.
+The mock/placeholder template LLM was removed.
+agent / node code 는 :class:`LLMClient` Protocol 에만 의존; concrete 구현
+(vLLM Llama) 은 config 로 선택. mock/placeholder template LLM 은 제거됨.
 
 Config schema / Config 스키마::
 
     {
       "llm": {
-        "implementation": "placeholder" | "vllm" | "hybrid",
+        "implementation": "vllm",
         "shallow": {
           "endpoint": "http://gpu1:8000/v1",
           "model": "meta-llama/Llama-3.1-8B-Instruct",
@@ -37,13 +37,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from opsight.tools.envelope import ToolResponse
+    from opsight.envelope import ToolResponse
 
 
 @runtime_checkable
 class LLMClient(Protocol):
-    """Common LLM surface — placeholder, vLLM, hybrid 모두 만족.
-    Common LLM surface — placeholder / vLLM / hybrid 모두 만족.
+    """Common LLM surface satisfied by the vLLM-backed client.
+    vLLM 기반 client 가 만족하는 공통 LLM surface.
     """
 
     name: str
@@ -84,7 +84,7 @@ def create_llm_client(config: dict[str, Any]) -> LLMClient:
     Args:
         config: dict with at minimum::
 
-            {"llm": {"implementation": "<placeholder|vllm|hybrid>",
+            {"llm": {"implementation": "vllm",
                      "shallow": {...}, "deep": {...}}}
 
     Returns:
@@ -100,100 +100,25 @@ def create_llm_client(config: dict[str, Any]) -> LLMClient:
             "config must contain 'llm' object with 'implementation' key. "
             f"got: {type(llm_section).__name__}"
         )
-    impl = llm_section.get("implementation", "placeholder")
-    known = ("placeholder", "vllm", "hybrid")
+    impl = llm_section.get("implementation", "vllm")
+    known = ("vllm",)
     if impl not in known:
         raise ValueError(
-            f"Unknown LLM implementation: {impl!r}. Expected one of {list(known)}."
+            f"Unknown LLM implementation: {impl!r}. Expected one of {list(known)} "
+            f"(mock/placeholder LLM was removed)."
         )
 
-    if impl == "placeholder":
-        from opsight.llm.placeholder_client import PlaceholderClient
-        return PlaceholderClient()
-
-    if impl == "vllm":
-        try:
-            from opsight.llm.vllm_client import VLLMClient
-        except ImportError as exc:
-            raise NotImplementedError(
-                "vLLM client requires `openai` Python package "
-                "(pip install openai). Import failed."
-            ) from exc
-        shallow_cfg = llm_section.get("shallow") or {}
-        deep_cfg = llm_section.get("deep") or {}
-        return VLLMClient(
-            shallow_config=shallow_cfg,
-            deep_config=deep_cfg,
-        )
-
-    if impl == "hybrid":
-        # Hybrid: shallow uses one backend, deep uses another.
-        # E.g. shallow=placeholder (no LLM call) + deep=vllm (70B Heavy).
-        # Hybrid: shallow / deep 백엔드 분리. Light 미배포 시 유용.
-        from opsight.llm.placeholder_client import PlaceholderClient
-        try:
-            from opsight.llm.vllm_client import VLLMClient
-        except ImportError as exc:
-            raise NotImplementedError(
-                "Hybrid mode needs vLLM client; `openai` not importable."
-            ) from exc
-        shallow_kind = (llm_section.get("shallow") or {}).get("kind", "placeholder")
-        deep_kind = (llm_section.get("deep") or {}).get("kind", "placeholder")
-        if shallow_kind == "vllm" and deep_kind == "vllm":
-            # Same as 'vllm' mode
-            return VLLMClient(
-                shallow_config=llm_section.get("shallow") or {},
-                deep_config=llm_section.get("deep") or {},
-            )
-        # Build per-side clients
-        shallow_client: LLMClient = (
-            VLLMClient(
-                shallow_config=llm_section.get("shallow") or {},
-                deep_config={},  # unused
-            ) if shallow_kind == "vllm" else PlaceholderClient()
-        )
-        deep_client: LLMClient = (
-            VLLMClient(
-                shallow_config={},
-                deep_config=llm_section.get("deep") or {},
-            ) if deep_kind == "vllm" else PlaceholderClient()
-        )
-        return _HybridClient(shallow=shallow_client, deep=deep_client)
-
-    raise AssertionError(f"unreachable: impl={impl!r}")  # pragma: no cover
-
-
-class _HybridClient:
-    """Composes two clients — narrate via shallow, brief via deep.
-    Shallow narration 은 한 client, deep brief 는 다른 client 로 분리.
-
-    Used when only one of (Light, Heavy) is deployed.
-    Light 또는 Heavy 둘 중 하나만 배포된 경우.
-    """
-
-    name: str = "hybrid"
-
-    def __init__(self, *, shallow: LLMClient, deep: LLMClient) -> None:
-        self._shallow = shallow
-        self._deep = deep
-
-    def narrate(self, tool_results: list[ToolResponse]) -> str:
-        return self._shallow.narrate(tool_results)
-
-    def brief(
-        self,
-        tool_results: list[ToolResponse],
-        *,
-        surgery_type: str,
-        surgery_phase: str,
-        elapsed_min: float,
-    ) -> dict[str, str]:
-        return self._deep.brief(
-            tool_results,
-            surgery_type=surgery_type,
-            surgery_phase=surgery_phase,
-            elapsed_min=elapsed_min,
-        )
+    try:
+        from opsight.llm.vllm_client import VLLMClient
+    except ImportError as exc:
+        raise NotImplementedError(
+            "vLLM client requires `openai` Python package "
+            "(pip install openai). Import failed."
+        ) from exc
+    return VLLMClient(
+        shallow_config=llm_section.get("shallow") or {},
+        deep_config=llm_section.get("deep") or {},
+    )
 
 
 __all__ = ["LLMClient", "create_llm_client"]

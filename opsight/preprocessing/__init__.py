@@ -12,7 +12,7 @@ Reference / 참조:
     prototype 목적상 *physiological clipping + NaN-aware* 만 필요.
 
 Reference: BFM preprocessing pipeline (SignalConfig, range clipping, NaN-gap
-interpolation). VitalAgent ports the *minimum subset* that addresses real_case
+interpolation). OpSight ports the *minimum subset* that addresses real_case
 findings; filtering / peak detection are out of scope (covered by FM tools).
 """
 from __future__ import annotations

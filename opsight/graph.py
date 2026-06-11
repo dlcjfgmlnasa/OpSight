@@ -13,10 +13,10 @@ Graph는 시뮬레이션 case당 configurable 횟수만큼 실행된다. 각 tic
 :class:`SimClock`을 30초 진행. Trigger 평가는 각 shallow tick 후 conditional
 edge에서 수행.
 
-FM is consumed ONLY through :class:`BiosignalFMInterface` here — no
-concrete-class import (ADR-011 swap mechanism, project_brief §13).
-본 module에서 FM은 :class:`BiosignalFMInterface`를 통해서만 소비된다 —
-concrete class import 금지 (ADR-011 swap, brief §13).
+FM-backed tools were removed (Biosignal Foundation Model decoupled); the graph
+no longer wires an FM backend.
+FM 기반 tool 은 제거됨 (Biosignal Foundation Model 분리) — graph 는 더 이상 FM
+backend 를 연결하지 않는다.
 """
 from __future__ import annotations
 
@@ -33,7 +33,6 @@ from opsight.triggers import should_escalate
 if TYPE_CHECKING:
     import torch
 
-    from opsight.fm.interface import BiosignalFMInterface
     from opsight.llm.client import LLMClient
     from opsight.sim_clock import SimClock
     from opsight.trace import TraceWriter
@@ -41,7 +40,6 @@ if TYPE_CHECKING:
 
 def build_graph(
     *,
-    fm: BiosignalFMInterface,
     clock: SimClock,
     signal: dict[str, torch.Tensor] | None = None,
     modalities: list[str],
@@ -63,8 +61,6 @@ def build_graph(
     Simulated clock은 shallow tick당 ``tick_sim_advance_s``만큼 진행.
 
     Args:
-        fm: Protocol-compliant FM backend (mock_stub / mock_rule_based /
-            real). Consumed via Protocol only.
         clock: SimClock instance.
         signal: legacy — full signal dict (entire trajectory exposed to tools).
             Use *either* ``signal`` or ``signal_stream``, not both.
@@ -108,7 +104,7 @@ def build_graph(
         # sim_time 까지 slice — strict real-time view (Issue #2).
         sliced = signal_stream.view_until(state.sim_time_s)
         return run_shallow_loop(
-            state, fm=fm, clock=clock, signal=sliced, modalities=modalities,
+            state, clock=clock, signal=sliced, modalities=modalities,
             trace=trace, llm_client=llm_client,
         )
 
@@ -124,7 +120,6 @@ def build_graph(
         sliced = signal_stream.view_until(state.sim_time_s)
         return run_deep_brief(
             state,
-            fm=fm,
             clock=clock,
             signal=sliced,
             modalities=modalities,
@@ -148,6 +143,8 @@ def build_graph(
     graph: StateGraph = StateGraph(AgentState)
     graph.add_node("shallow", _shallow_node)
     graph.add_node("deep", _deep_node)
+    # START → shallow tick loop. (EMR-backed case_init removed.)
+    # START → shallow tick loop. (EMR 기반 case_init 제거됨.)
     graph.add_edge(START, "shallow")
     graph.add_conditional_edges(
         "shallow",

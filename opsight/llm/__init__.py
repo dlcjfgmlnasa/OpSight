@@ -1,14 +1,14 @@
-"""LLM client + placeholder template + vLLM wiring (Sprint 6).
-LLM client + placeholder template + vLLM wiring (Sprint 6).
+"""LLM client Protocol + vLLM wiring.
+LLM client Protocol + vLLM wiring.
+
+Mock/placeholder LLM removed — narration / brief are produced by the real
+vLLM-backed client only (or skipped when no client is wired).
+Mock/placeholder LLM 제거 — narration / brief 는 실제 vLLM client 로만 생성
+(client 미연결 시 생략).
 """
 from opsight.llm.client import LLMClient, create_llm_client
-from opsight.llm.placeholder import render_deep_brief, render_shallow_narration
-from opsight.llm.placeholder_client import PlaceholderClient
 
 __all__ = [
     "LLMClient",
     "create_llm_client",
-    "PlaceholderClient",
-    "render_shallow_narration",
-    "render_deep_brief",
 ]

@@ -1,12 +1,13 @@
 """Deep brief node (plan_1.8 task 8).
 Deep brief node (plan_1.8 task 8).
 
-Triggered by the rule engine. Runs the full 16-tool sweep (FM 7 + EMR 5 +
-Knowledge / Auxiliary placeholders), then renders the 9-section Korean
-brief via the placeholder LLM.
-Rule engine에 의해 trigger. 16-tool 전체 sweep 실행 (FM 7 + EMR 5 +
-Knowledge / Auxiliary placeholder) 후 placeholder LLM으로 9-section 한글
-브리프 렌더링.
+Triggered by the rule engine. Runs the full tool sweep (EMR + Knowledge /
+Auxiliary + Signal Access; FM-backed tools removed — Biosignal Foundation
+Model decoupled), then renders the 9-section Korean brief via the placeholder
+LLM.
+Rule engine 에 의해 trigger. 전체 tool sweep 실행 (EMR + Knowledge / Auxiliary +
+Signal Access; FM 기반 tool 제거 — Biosignal Foundation Model 분리) 후
+placeholder LLM 으로 9-section 한글 브리프 렌더링.
 
 Latency target / Latency 목표: < 60 sec (project_brief §6.2).
 """
@@ -15,15 +16,13 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from opsight.llm.placeholder import render_deep_brief
 from opsight.state import AgentState, BriefRecord
-from opsight.tools.envelope import ToolRequest, ToolResponse
-from opsight.tools.registry import TOOLS, call_tool
+from opsight.envelope import ToolRequest, ToolResponse
+from opsight.registry import TOOLS, call_tool
 
 if TYPE_CHECKING:
     import torch
 
-    from opsight.fm.interface import BiosignalFMInterface
     from opsight.llm.client import LLMClient
     from opsight.sim_clock import SimClock
     from opsight.trace import TraceWriter
@@ -39,44 +38,6 @@ def _deep_args(name: str, state: AgentState, modalities: list[str]) -> dict:
     """Return args for a deep-sweep tool call.
     Deep sweep tool 호출용 args 반환.
     """
-    if name == "predict_hypotension":
-        return {"horizon_min": 5, "available_modalities": modalities}
-    if name == "predict_cardiac_arrest":
-        return {"horizon_min": 5, "available_modalities": modalities}
-    if name == "assess_signal_quality":
-        return {"modality": modalities[0] if modalities else "ABP"}
-    if name == "cross_modal_consistency":
-        if len(modalities) >= 2:
-            return {"modality_pair": [modalities[0], modalities[1]]}
-        return {"modality_pair": [modalities[0] if modalities else "ABP", "ABP"]}
-    if name == "temporal_trend_analysis":
-        return {"modality": modalities[0] if modalities else "ABP", "window_min": 5}
-    if name == "forecast_signal":
-        return {"modality": modalities[0] if modalities else "ABP", "horizon_min": 5}
-    if name == "anomaly_score":
-        return {"modality": modalities[0] if modalities else "ABP"}
-    if name in ("query_anesthesia_drugs", "query_vasoactive_drugs", "query_fluid_blood"):
-        window_start = max(0.0, state.sim_time_s - 300.0)  # last 5 min
-        return {"time_window": [window_start, state.sim_time_s]}
-    if name == "query_surgery_progress":
-        return {"current_time": state.sim_time_s}
-    if name == "query_patient_baseline":
-        return {}
-    # Knowledge / Comparative (13–14) — STUB calls / Knowledge 비교 (13–14) STUB 호출
-    if name == "find_similar_cases":
-        return {
-            "k": 5,
-            "surgery_type": "general",
-            "current_state": {"sim_time_s": state.sim_time_s},
-        }
-    if name == "intervention_response_prediction":
-        # 본 deep sweep 에서는 placeholder intervention 으로 호출 (실 사용 시 LLM 결정)
-        # Placeholder intervention for the deep sweep (in real use, decided by LLM)
-        return {
-            "intervention": {"name": "no_op", "amount": 0.0, "unit": "none"},
-            "horizon_min": 5,
-            "current_state": {"sim_time_s": state.sim_time_s},
-        }
     # Auxiliary (15–16) / Auxiliary tool 15–16
     if name == "surgery_context_awareness":
         return {"surgery_type": "general", "phase": "maintenance"}
@@ -92,7 +53,9 @@ def _deep_args(name: str, state: AgentState, modalities: list[str]) -> dict:
         }
     # Signal Access (17–21) — ADR-016 / plan_1.3.5
     # Signal Access (17–21) — ADR-016 / plan_1.3.5
-    if name == "get_current_vitals":
+    if name == "get_current_state":
+        return {}
+    if name == "get_signal_trend":
         return {}
     if name == "describe_signal":
         return {"modality": modalities[0] if modalities else "ABP", "window_min": 5}
@@ -114,7 +77,6 @@ def _deep_args(name: str, state: AgentState, modalities: list[str]) -> dict:
 def run_deep_brief(
     state: AgentState,
     *,
-    fm: BiosignalFMInterface,
     clock: SimClock,
     signal: dict[str, torch.Tensor],
     modalities: list[str],
@@ -143,7 +105,7 @@ def run_deep_brief(
         )
         if trace is not None:
             trace.event("tool_call", {"tool": tool_name, "args": args}, sim_time_s=state.sim_time_s)
-        resp = call_tool(tool_name, req, fm=fm, clock=clock, signal=signal)
+        resp = call_tool(tool_name, req, clock=clock, signal=signal)
         tool_results.append(resp)
         if trace is not None:
             trace.event(
@@ -157,32 +119,25 @@ def run_deep_brief(
                 sim_time_s=state.sim_time_s,
             )
 
-    # Surgery context from the EMR query 11 result.
-    # EMR tool 11 결과에서 surgery context 추출.
+    # Surgery phase / elapsed — EMR surgery-progress tool removed, so fall back
+    # to a sim-time estimate (real phase wiring is a later rebuild step).
+    # EMR surgery-progress tool 제거 → sim-time 추정으로 fallback (실 phase 배선은
+    # 추후 rebuild 단계).
     surgery_phase = "maintenance"
     elapsed_min = state.sim_time_s / 60.0
-    for r in tool_results:
-        if r.tool_name == "query_surgery_progress" and r.ok and r.result is not None:
-            surgery_phase = str(r.result.get("phase", surgery_phase))
-            elapsed_min = float(r.result.get("elapsed_min", elapsed_min))
-            break
 
-    # LLM client — placeholder default; vLLM-backed swaps in via config (Sprint 6).
-    # LLM client — 기본 placeholder; vLLM 은 config 로 swap (Sprint 6).
-    if llm_client is None:
-        sections = render_deep_brief(
-            tool_results,
-            surgery_type="general",
-            surgery_phase=surgery_phase,
-            elapsed_min=elapsed_min,
-        )
-    else:
+    # Brief sections only when a (vLLM-backed) client is wired; otherwise the
+    # deep record is created with empty sections (structural placeholder).
+    # brief section 은 (vLLM) client 가 연결됐을 때만 생성 — 미연결 시 빈 section.
+    if llm_client is not None:
         sections = llm_client.brief(
             tool_results,
             surgery_type="general",
             surgery_phase=surgery_phase,
             elapsed_min=elapsed_min,
         )
+    else:
+        sections = {}
     latency_ms = (time.perf_counter() - t0) * 1000.0
     record = BriefRecord(
         sim_time_s=state.sim_time_s,

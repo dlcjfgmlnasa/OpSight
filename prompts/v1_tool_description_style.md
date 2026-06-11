@@ -141,4 +141,4 @@ description: "Returns the risk for hypotension."
 |---------|------|--------|
 | v1 | 2026-05-17 | Initial — plan_1.6 |
 
-[CLINICIAN-REVIEW: 이형철 교수님 그룹 검토 필요] (description tone + clinical phrasing 정합성 검토)
+[CLINICIAN-REVIEW: 의료진 검토 필요] (description tone + clinical phrasing 정합성 검토)

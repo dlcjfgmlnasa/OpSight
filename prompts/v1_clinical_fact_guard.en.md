@@ -26,7 +26,7 @@ You are an LLM agent **assisting** clinicians in intraoperative patient monitori
 Append exactly this marker at the end of any output that carries clinical implication:
 
 ```
-[CLINICIAN-REVIEW: Group of Prof. Lee HC review required]
+[CLINICIAN-REVIEW: clinician review required]
 ```
 
 The following naming forms are **banned** and must never appear:
@@ -92,4 +92,4 @@ If you are not certain, say so. Use:
 |---------|------|--------|
 | v1 | 2026-05-17 | Initial — English mirror for plan_1.6 |
 
-[CLINICIAN-REVIEW: Group of Prof. Lee HC review required] (review of this guard block itself)
+[CLINICIAN-REVIEW: clinician review required] (review of this guard block itself)
