@@ -22,6 +22,7 @@ Run / 실행:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import torch
@@ -30,6 +31,56 @@ from opsight.graph import build_graph
 from opsight.sim_clock import SimClock
 from opsight.state import AgentState
 from opsight.trace import TraceWriter, read_trace
+
+if TYPE_CHECKING:
+    from opsight.envelope import ToolResponse
+
+
+# ── Deterministic LLM test double ──
+# Production code intentionally has NO placeholder LLM (removed in the
+# false-alarm-agent rebuild); the brief is generated only by the vLLM-backed
+# client. This test-only double satisfies the ``LLMClient`` Protocol so the
+# end-to-end smoke test can verify the brief pipeline structure (9 sections +
+# Clinical Fact Guard markers) without a real model / GPU.
+# production 에는 placeholder LLM 이 없으므로(rebuild 에서 제거), brief 구조 검증을
+# 위해 ``LLMClient`` Protocol 을 만족하는 테스트 전용 double 을 둔다.
+
+
+class _DeterministicLLMClient:
+    """Deterministic ``LLMClient`` test double — no real model, no GPU."""
+
+    name = "deterministic-test-double"
+
+    _MARKER = "[CLINICIAN-REVIEW: 의료진 검토 필요]"
+    _SECTIONS = (
+        "Surgery context", "Signal status", "Assessment confidence",
+        "Risk evaluation", "Evidence", "Intraoperative context",
+        "Similar trajectory", "Recommendations", "Limitations",
+    )
+
+    def narrate(self, tool_results: list[ToolResponse]) -> str:
+        return f"[안정] {len(tool_results)}개 tool 결과 기반 narration (deterministic stub)."
+
+    def brief(
+        self,
+        tool_results: list[ToolResponse],
+        *,
+        surgery_type: str,
+        surgery_phase: str,
+        elapsed_min: float,
+    ) -> dict[str, str]:
+        n = len(tool_results)
+        sections = {
+            name: (
+                f"{name}: deterministic stub "
+                f"({surgery_type}/{surgery_phase}, {elapsed_min:.0f}min, {n} tool results)."
+            )
+            for name in self._SECTIONS
+        }
+        # Clinical Fact Guard markers required by the brief contract.
+        sections["Recommendations"] += " " + self._MARKER
+        sections["Limitations"] += " " + self._MARKER
+        return sections
 
 
 # ── Fixtures ──
@@ -88,6 +139,7 @@ def test_smoke_graph_runs_end_to_end(tmp_path: Path, signal, modalities) -> None
             max_ticks=5,
             tick_sim_advance_s=30.0,
             trace=tw,
+            llm_client=_DeterministicLLMClient(),
         )
         final = graph.invoke(initial, {"recursion_limit": 50})
 
