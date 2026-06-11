@@ -13,7 +13,7 @@ Tool registry — tool 중앙 카탈로그 (plan_1.8 task 5).
 Tool category map (project_brief §7):
 Tool 카테고리 (project_brief §7):
 - Auxiliary tools                 — opsight/tools/auxiliary_tools.py
-- Signal-state tools (ADR-016, amended 2026-06-10) — opsight/tools/signal_state_tools.py
+- Signal-state tools (ADR-016, amended 2026-06-10) — opsight/tools/signal_state_tools/ (package)
 
 NOTE: FM-backed tools, EMR/drug-lookup tools, knowledge stubs, and the
 mock/placeholder LLM were removed during the false-alarm-agent rebuild.
