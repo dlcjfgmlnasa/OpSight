@@ -18,10 +18,9 @@ import pytest
 import torch
 
 from opsight.sim_clock import SimClock
-from opsight.tools.envelope import ToolRequest
-from opsight.tools.registry import TOOLS, call_tool
+from opsight.envelope import ToolRequest
+from opsight.registry import TOOLS, call_tool
 from opsight.tools.signal_state_tools import (
-    USE_NEUROKIT,
     tool_assess_variability,
     tool_compare_to_baseline,
     tool_describe_signal,
@@ -261,8 +260,9 @@ def test_tool19_hr_returns_hrv_metrics(clock):
     assert r.ok
     assert "SDNN_ms" in r.result["metrics"]
     assert "RMSSD_ms" in r.result["metrics"]
-    expected_impl = "neurokit" if USE_NEUROKIT else "numpy_fallback"
-    assert r.result["meta"]["implementation"] == expected_impl
+    assert "LF_HF_ratio" in r.result["metrics"]
+    # Self-implemented HRV (no NeuroKit2).
+    assert r.result["meta"]["implementation"] == "numpy_welch_psd"
 
 
 def test_tool19_map_returns_bpv_metrics(clock):
@@ -345,20 +345,35 @@ def test_tool19_missing_signal_data(clock):
     assert r.error.type == "invalid_args"
 
 
-def test_tool19_fallback_metadata_when_no_neurokit():
-    """If NeuroKit2 absent, fallback metadata should signal LF_HF unavailable.
-    NeuroKit2 부재 시 fallback metadata 에 LF_HF 미가용 명시.
+def test_tool19_lf_hf_computed_natively_for_variable_hr():
+    """LF/HF is computed natively (self-implemented Welch PSD, no NeuroKit2).
+    변동 있는 HR series 에서 LF/HF 가 자체 구현으로 계산된다 (NeuroKit2 미사용).
     """
-    if USE_NEUROKIT:
-        pytest.skip("NeuroKit2 installed — fallback test not applicable")
-    sig = _synth_signal_full()
-    c = SimClock(start_s=0.0); c.tick(60.0)
+    # HR with a 0.1 Hz oscillation over 300 s @ 1 Hz → finite, non-trivial LF/HF.
+    t = np.arange(300, dtype=np.float64)
+    hr = (75.0 + 6.0 * np.sin(2 * np.pi * 0.1 * t)).astype(np.float32)
+    sig = {"HR": torch.from_numpy(hr)}
+    c = SimClock(start_s=400.0)  # now=400 ≥ sim_time → no leak
     r = tool_assess_variability(
-        _req("assess_variability", {"modality": "HR"}), c, sig,
+        _req("assess_variability", {"modality": "HR"}, sim_time_s=400.0), c, sig,
     )
     assert r.ok
-    assert r.result["meta"]["implementation"] == "numpy_fallback"
-    assert "LF_HF_ratio" in r.result["meta"]["unavailable_metrics"]
+    m = r.result["metrics"]
+    assert m["SDNN_ms"] is not None and m["SDNN_ms"] > 0
+    assert m["RMSSD_ms"] is not None
+    assert m["LF_HF_ratio"] is not None and m["LF_HF_ratio"] > 0
+
+
+def test_tool19_lf_hf_none_for_flat_hr():
+    """Flat HR → no variability → LF/HF is None (ratio undefined), but ok."""
+    sig = {"HR": torch.from_numpy(np.full(300, 75.0, dtype=np.float32))}
+    c = SimClock(start_s=400.0)
+    r = tool_assess_variability(
+        _req("assess_variability", {"modality": "HR"}, sim_time_s=400.0), c, sig,
+    )
+    assert r.ok
+    assert r.result["metrics"]["LF_HF_ratio"] is None
+    assert r.result["metrics"]["SDNN_ms"] == pytest.approx(0.0)
 
 
 # ── compare_to_baseline ──
@@ -493,6 +508,109 @@ def test_tool21_leakage_violation(clock):
     assert r.error.type == "leakage_violation"
 
 
+def test_tool21_multiple_concerns_counted_in_overall(clock):
+    """저MAP + 빈맥 + BIS 과심도 → 3개 축에서 동시에 concern 누적.
+    overall_assessment 가 "N건" 으로 집계하고 각 state 가 독립적으로 분기.
+    """
+    sig = {
+        "ABP": torch.tensor([58.0] * 60, dtype=torch.float32),   # MAP < 65
+        "HR": torch.tensor([104.0] * 60, dtype=torch.float32),   # HR > 100
+        "BIS": torch.tensor([35.0] * 60, dtype=torch.float32),   # BIS < 40
+        "SpO2": torch.tensor([98.0] * 60, dtype=torch.float32),  # 정상
+    }
+    r = tool_summarize_current_state(
+        _req("summarize_current_state", {}), clock, sig,
+    )
+    assert r.ok
+    res = r.result
+    assert res["hemodynamic_state"] == "caution_low_pressure"
+    assert res["anesthesia_state"] == "possibly_deep"
+    assert res["respiratory_state"] == "stable"
+    # MAP / HR / BIS = 3 concerns; SpO2 정상이므로 추가 안 됨.
+    assert len(res["key_concerns"]) == 3
+    assert "3건" in res["overall_assessment"]
+    assert "[CLINICIAN-REVIEW: 의료진 검토 필요]" in res["overall_assessment"]
+
+
+def test_tool21_no_concerns_reports_stable_overall(clock):
+    """모든 vital 정상 → concern 0건, overall 은 "안정 범위 내" 문구."""
+    sig = {
+        "ABP": torch.tensor([82.0] * 60, dtype=torch.float32),
+        "HR": torch.tensor([72.0] * 60, dtype=torch.float32),
+        "BIS": torch.tensor([48.0] * 60, dtype=torch.float32),
+        "SpO2": torch.tensor([99.0] * 60, dtype=torch.float32),
+    }
+    r = tool_summarize_current_state(
+        _req("summarize_current_state", {}), clock, sig,
+    )
+    assert r.ok
+    assert r.result["key_concerns"] == []
+    assert "안정 범위 내" in r.result["overall_assessment"]
+    assert "[CLINICIAN-REVIEW: 의료진 검토 필요]" in r.result["overall_assessment"]
+
+
+def test_tool21_missing_map_yields_unknown_hemodynamic(clock):
+    """MAP 결측 시 추측하지 않고 unknown + 'MAP 미가용' concern (quality-aware)."""
+    sig = {
+        "HR": torch.tensor([88.0] * 60, dtype=torch.float32),
+        "SpO2": torch.tensor([97.0] * 60, dtype=torch.float32),
+        # ABP/MAP, BIS 부재
+    }
+    r = tool_summarize_current_state(
+        _req("summarize_current_state", {}), clock, sig,
+    )
+    assert r.ok
+    res = r.result
+    assert res["hemodynamic_state"] == "unknown"
+    assert res["anesthesia_state"] == "unknown"   # BIS 부재
+    assert res["respiratory_state"] == "stable"   # SpO2 97 정상
+    assert any("MAP 미가용" in c for c in res["key_concerns"])
+
+
+def test_tool21_high_bis_flags_possibly_light(clock):
+    """BIS > 60 → possibly_light + 조건문 concern."""
+    sig = {
+        "ABP": torch.tensor([80.0] * 60, dtype=torch.float32),
+        "BIS": torch.tensor([72.0] * 60, dtype=torch.float32),  # > 60
+    }
+    r = tool_summarize_current_state(
+        _req("summarize_current_state", {}), clock, sig,
+    )
+    assert r.ok
+    assert r.result["anesthesia_state"] == "possibly_light"
+    assert any("BIS" in c and "가능성을 시사함" in c
+               for c in r.result["key_concerns"])
+
+
+def test_tool21_low_spo2_flags_respiratory_caution(clock):
+    """SpO2 < 92 → caution_low_spo2 호흡 상태 concern."""
+    sig = {
+        "ABP": torch.tensor([80.0] * 60, dtype=torch.float32),
+        "SpO2": torch.tensor([88.0] * 60, dtype=torch.float32),  # < 92
+    }
+    r = tool_summarize_current_state(
+        _req("summarize_current_state", {}), clock, sig,
+    )
+    assert r.ok
+    assert r.result["respiratory_state"] == "caution_low_spo2"
+    assert any("SpO2" in c for c in r.result["key_concerns"])
+
+
+def test_tool21_empty_signal_all_unknown(clock):
+    """signal 자체가 비어도 에러 없이 모든 축 unknown 으로 graceful degrade."""
+    r = tool_summarize_current_state(
+        _req("summarize_current_state", {}), clock, {},
+    )
+    assert r.ok
+    res = r.result
+    assert res["hemodynamic_state"] == "unknown"
+    assert res["anesthesia_state"] == "unknown"
+    assert res["respiratory_state"] == "unknown"
+    # MAP 미가용만 concern 으로 남는다.
+    assert any("MAP 미가용" in c for c in res["key_concerns"])
+    assert "[CLINICIAN-REVIEW: 의료진 검토 필요]" in res["overall_assessment"]
+
+
 # ── Registry integration / Registry 통합 ──
 
 
@@ -526,8 +644,3 @@ def _minimal_args(name: str) -> dict:
     if name == "compare_to_baseline":
         return {"modality": "ABP", "sampling_rate_hz": 500.0}
     raise ValueError(name)
-
-
-def test_neurokit2_environment_status():
-    """Documents NeuroKit2 availability — informational test."""
-    assert USE_NEUROKIT or not USE_NEUROKIT
