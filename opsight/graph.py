@@ -24,9 +24,11 @@ from typing import TYPE_CHECKING, Callable
 
 from langgraph.graph import END, START, StateGraph
 
+from opsight.envelope import ToolRequest
 from opsight.nodes.deep_brief import run_deep_brief
 from opsight.nodes.shallow_loop import run_shallow_loop
 from opsight.nodes.triage import run_triage
+from opsight.registry import call_tool
 from opsight.signal_stream import SignalStream, stream_from_full_signal
 from opsight.state import AgentState
 from opsight.triggers import should_escalate
@@ -89,6 +91,34 @@ def build_graph(
         # Legacy full-signal 을 stream 으로 wrap (downstream 일관성).
         signal_stream = stream_from_full_signal(signal)
 
+    def _case_init_node(state: AgentState) -> AgentState:
+        """Load case-level patient context ONCE at graph entry (ADR-018).
+        Graph 진입 시 환자 컨텍스트를 1회 로드 (ADR-018).
+
+        Calls ``get_patient_context`` and caches the result in
+        ``state.case_baseline`` (static for the case). Subsequent shallow / deep
+        nodes auto-inject it into the LLM prompt. On failure (e.g. a synthetic
+        case_id not in VitalDB) ``case_baseline`` stays ``None`` — graceful.
+        ``get_patient_context`` 1회 호출 → ``state.case_baseline`` 캐시. 실패 시
+        (예: VitalDB 에 없는 synthetic case_id) None 유지 — graceful.
+        """
+        req = ToolRequest(case_id=state.case_id, sim_time_s=state.sim_time_s,
+                          tool_name="get_patient_context", args={})
+        resp = call_tool("get_patient_context", req, clock=clock)
+        baseline = resp.result if resp.ok else None
+        # Bootstrap step — emit a dedicated ``case_init`` event (NOT a per-tick
+        # ``tool_result``), so a missing/synthetic case_id doesn't read as a tool
+        # failure in the monitored sweep stream.
+        # 부트스트랩 — 전용 ``case_init`` event (per-tick ``tool_result`` 아님).
+        if trace is not None:
+            trace.event(
+                "case_init",
+                {"loaded": baseline is not None, "ok": resp.ok,
+                 "result_keys": list(resp.result or {})},
+                sim_time_s=state.sim_time_s,
+            )
+        return state.model_copy(update={"case_baseline": baseline})
+
     def _shallow_node(state: AgentState) -> AgentState:
         # Advance the sim clock BEFORE running the shallow loop / shallow loop
         # 실행 전에 sim clock 진행.
@@ -150,11 +180,12 @@ def build_graph(
         return "shallow"
 
     graph: StateGraph = StateGraph(AgentState)
+    graph.add_node("case_init", _case_init_node)
     graph.add_node("shallow", _shallow_node)
     graph.add_node("deep", _deep_node)
-    # START → shallow tick loop. (EMR-backed case_init removed.)
-    # START → shallow tick loop. (EMR 기반 case_init 제거됨.)
-    graph.add_edge(START, "shallow")
+    # START → case_init (1회 환자 컨텍스트 로드, ADR-018) → shallow tick loop.
+    graph.add_edge(START, "case_init")
+    graph.add_edge("case_init", "shallow")
     graph.add_conditional_edges(
         "shallow",
         _route,

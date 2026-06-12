@@ -126,12 +126,26 @@ def run_deep_brief(
     surgery_phase = "maintenance"
     elapsed_min = state.sim_time_s / 60.0
 
+    # Inject case-level patient context (ADR-018) as a synthetic tool result so
+    # the brief's §[Surgery context] is patient-aware, without changing brief()'s
+    # signature. Populated once by the case-init node; None for synthetic cases.
+    # case_baseline(ADR-018)을 합성 tool result 로 주입 — §[Surgery context]가 환자
+    # 인지하게. case-init node 가 1회 채움; synthetic case 는 None.
+    brief_inputs = list(tool_results)
+    if state.case_baseline is not None:
+        brief_inputs.insert(0, ToolResponse(
+            case_id=state.case_id, sim_time_s=state.sim_time_s,
+            tool_name="case_baseline", args={},
+            result=dict(state.case_baseline),
+            quality_meta={"source": "case_init_cache"}, latency_ms=0.0,
+        ))
+
     # Brief sections only when a (vLLM-backed) client is wired; otherwise the
     # deep record is created with empty sections (structural placeholder).
     # brief section 은 (vLLM) client 가 연결됐을 때만 생성 — 미연결 시 빈 section.
     if llm_client is not None:
         sections = llm_client.brief(
-            tool_results,
+            brief_inputs,
             surgery_type="general",
             surgery_phase=surgery_phase,
             elapsed_min=elapsed_min,
