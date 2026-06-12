@@ -64,6 +64,25 @@ class BriefRecord(BaseModel):
     latency_ms: float = 0.0
 
 
+class AlarmRecord(BaseModel):
+    """One alarm raised by the triage router or by LLM investigation (ADR-023).
+    triage router 또는 LLM 조사가 울린 알람 하나 (ADR-023).
+
+    ``source`` distinguishes the tiered path: ``"rule"`` = obvious_alarm (router
+    fired directly), ``"investigation"`` = ambiguous case escalated to LLM+FM and
+    the rule ``alarm_gate`` confirmed. **Both go through a rule** (patient-safety).
+    ``source`` 가 tiered 경로를 구분한다: ``"rule"`` = obvious_alarm(router 직접),
+    ``"investigation"`` = 애매 케이스를 LLM+FM 조사 후 rule ``alarm_gate`` 가 확정.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    sim_time_s: float
+    source: Literal["rule", "investigation"]
+    route: str                # router decision (Route value)
+    reason: str
+
+
 class AgentState(BaseModel):
     """Mutable LangGraph state for OpSight / OpSight LangGraph state.
 
@@ -107,6 +126,12 @@ class AgentState(BaseModel):
     quality_history: list[QualitySample] = Field(default_factory=list)
     brief_history: list[BriefRecord] = Field(default_factory=list)
 
+    alarm_history: list[AlarmRecord] = Field(default_factory=list)
+    """Alarms raised by the triage router / investigation (ADR-023).
+    triage router / 조사가 울린 알람 (ADR-023). 매 shallow tick 후 ``run_triage`` 가
+    obvious_alarm(rule) 또는 ambiguous→investigation→alarm_gate 결과를 append.
+    """
+
     # ── Case-level static context (ADR-018) / Case 수준 정적 맥락 (ADR-018) ──
     case_baseline: dict[str, Any] | None = None
     """Case-level patient baseline cached at case-init (ADR-018).
@@ -140,4 +165,6 @@ class AgentState(BaseModel):
     """
 
 
-__all__ = ["AgentState", "Mode", "RiskSample", "QualitySample", "BriefRecord"]
+__all__ = [
+    "AgentState", "Mode", "RiskSample", "QualitySample", "BriefRecord", "AlarmRecord",
+]

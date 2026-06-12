@@ -26,6 +26,7 @@ from langgraph.graph import END, START, StateGraph
 
 from opsight.nodes.deep_brief import run_deep_brief
 from opsight.nodes.shallow_loop import run_shallow_loop
+from opsight.nodes.triage import run_triage
 from opsight.signal_stream import SignalStream, stream_from_full_signal
 from opsight.state import AgentState
 from opsight.triggers import should_escalate
@@ -103,9 +104,17 @@ def build_graph(
         # Slice signal at sim_time — strict real-time view (Issue #2 fix).
         # sim_time 까지 slice — strict real-time view (Issue #2).
         sliced = signal_stream.view_until(state.sim_time_s)
-        return run_shallow_loop(
+        state = run_shallow_loop(
             state, clock=clock, signal=sliced, modalities=modalities,
             trace=trace, llm_client=llm_client,
+        )
+        # Tiered triage (ADR-023): rule router → obvious alarm / ambiguous
+        # LLM investigation → rule alarm gate. Deep-brief escalation (below) is
+        # a separate mechanism and stays unchanged.
+        # Tiered triage (ADR-023): router → 즉시 알람 / 애매는 LLM 조사 → rule gate.
+        return run_triage(
+            state, clock=clock, signal=sliced,
+            llm_client=llm_client, trace=trace,
         )
 
     def _deep_node(state: AgentState) -> AgentState:
