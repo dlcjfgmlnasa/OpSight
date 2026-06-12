@@ -65,6 +65,11 @@ def run_triage(
     alarms = list(state.alarm_history)
     scratch = dict(state.scratch)
     scratch["last_route"] = decision.route.value
+    # Per-tick deep-escalation signal (ADR-023 §5): set to the alarm reason when
+    # a rule/investigation alarm is confirmed THIS tick; ``should_escalate`` reads
+    # it to fire the deep brief. Reset each tick so a stale alarm doesn't persist.
+    # 매 tick deep escalation 신호 — 이번 tick 알람 확정 시 reason 세팅(없으면 None).
+    scratch["triage_alarm_reason"] = None
 
     if trace is not None:
         trace.event(
@@ -79,6 +84,7 @@ def run_triage(
             sim_time_s=state.sim_time_s, source="rule",
             route=decision.route.value, reason=reason,
         ))
+        scratch["triage_alarm_reason"] = f"obvious_alarm ({reason})"
         if trace is not None:
             trace.event("alarm", {"source": "rule", "reason": reason},
                         sim_time_s=state.sim_time_s)
@@ -104,6 +110,7 @@ def run_triage(
                     sim_time_s=state.sim_time_s, source="investigation",
                     route=decision.route.value, reason=gate_reason,
                 ))
+                scratch["triage_alarm_reason"] = f"investigation ({gate_reason})"
                 if trace is not None:
                     trace.event("alarm", {"source": "investigation", "reason": gate_reason},
                                 sim_time_s=state.sim_time_s)

@@ -70,6 +70,29 @@ def test_obvious_normal_no_alarm(clock) -> None:
     assert out.alarm_history == []
 
 
+# ── Escalation signal (ADR-023 §5): alarm → deep-brief trigger ──
+
+
+def test_obvious_alarm_sets_escalation_signal(clock) -> None:
+    st = _state({"map_mmHg": 45.0})
+    out = run_triage(st, clock=clock, signal={})
+    assert out.scratch["triage_alarm_reason"] is not None
+    assert "obvious_alarm" in out.scratch["triage_alarm_reason"]
+
+
+def test_obvious_normal_clears_escalation_signal(clock) -> None:
+    st = _state({"map_mmHg": 85.0, "hr_bpm": 72.0, "spo2_pct": 98.0, "bis": 50.0})
+    out = run_triage(st, clock=clock, signal={})
+    assert out.scratch["triage_alarm_reason"] is None
+
+
+def test_investigation_alarm_sets_escalation_signal(clock) -> None:
+    st = _state({"map_mmHg": 63.0, "hr_bpm": 75.0, "spo2_pct": 98.0, "bis": 50.0})
+    out = run_triage(st, clock=clock, signal={},
+                     llm_client=_FinalInvestigator({"hypotension_risk": 0.8}))
+    assert "investigation" in out.scratch["triage_alarm_reason"]
+
+
 # ── Ambiguous → investigation ──
 
 
@@ -141,3 +164,27 @@ def test_triage_runs_inside_compiled_graph() -> None:
     assert final_state.scratch.get("last_route") in {
         "obvious_alarm", "obvious_normal", "ambiguous",
     }
+
+
+def test_triage_alarm_drives_deep_brief_in_graph() -> None:
+    """ADR-023 §5: a triage alarm escalates to a deep brief (no clinician on-demand)."""
+    import torch
+
+    from opsight.graph import build_graph
+
+    gclock = SimClock(start_s=0.0)
+    # zeros → MAP ~0 → obvious_alarm every tick → should escalate to deep brief.
+    signal = {
+        "ABP": torch.zeros(30 * 500), "ECG_II": torch.zeros(30 * 500),
+        "PPG": torch.zeros(30 * 500), "BIS": torch.zeros(30 * 100),
+    }
+    graph = build_graph(
+        clock=gclock, signal=signal, modalities=["ABP", "ECG_II", "PPG", "BIS"],
+        max_ticks=3, tick_sim_advance_s=30.0,
+    )
+    # No clinician_on_demand set → escalation comes purely from the triage alarm.
+    final = graph.invoke(AgentState(case_id="c1", trace_id="t1"), {"recursion_limit": 50})
+    fs = final if isinstance(final, AgentState) else AgentState.model_validate(final)
+    assert fs.scratch.get("last_route") == "obvious_alarm"
+    assert len(fs.alarm_history) >= 1
+    assert len(fs.brief_history) >= 1  # alarm → deep brief followed

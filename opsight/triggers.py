@@ -17,10 +17,14 @@ Trigger list / Trigger 목록 (brief §6.3):
 5. Acute event warning (arrest > 0.5)
 6. Clinician on-demand
 7. Periodic deep check (every 5 min)
+8. Triage alarm (ADR-023) — router/investigation 이 알람을 확정한 tick
 
-⚠️ Trigger threshold는 brief §6.3 그대로. 실제 mock FM Tier 1 출력 분포에
-   따라 fire 빈도가 plan 의도와 다를 수 있음. Tier 2 도착 (plan_1.6.5) 후
-   재조정 가능. ``[CLINICIAN-REVIEW: 의료진 검토 필요]``
+⚠️ ADR-023 (tiered escalation): FM 기반 trigger 1–5 는 FM 분리 후 producer 가 없어
+   현재 **dormant**. 실제 live escalation driver 는 6(clinician) / 7(periodic) / 8(triage
+   alarm) 이며, 그중 **8(triage alarm)이 state 기반 주 driver** 다 — router 가 FM 없이
+   vital 로 "깊이 봐야 하는가"를 판정하고, 알람 확정 시 deep brief(설명 리포트)가 따라온다.
+   Real FM 도착 시 risk 점수는 별도 trigger 가 아니라 router 의 추가 신호로 합류한다.
+⚠️ Trigger threshold는 brief §6.3 그대로. ``[CLINICIAN-REVIEW: 의료진 검토 필요]``
 """
 from __future__ import annotations
 
@@ -196,6 +200,20 @@ def _check_clinician_on_demand(state: AgentState) -> str | None:
     return None
 
 
+def _check_triage_alarm(state: AgentState) -> str | None:
+    """Trigger 8 (ADR-023): a triage alarm was confirmed this tick.
+    Trigger 8 (ADR-023): 이번 tick 에 triage 알람이 확정됨.
+
+    ``run_triage`` sets ``scratch["triage_alarm_reason"]`` when the router fires
+    an obvious_alarm or an ambiguous case clears the investigation ``alarm_gate``.
+    This is the live, state-driven escalation path (FM triggers 1–5 are dormant).
+    router obvious_alarm 또는 investigation→alarm_gate 확정 시 ``run_triage`` 가
+    ``scratch["triage_alarm_reason"]`` 를 세팅 → 그 reason 으로 deep brief escalate.
+    """
+    reason = state.scratch.get("triage_alarm_reason")
+    return f"triage_alarm: {reason}" if reason else None
+
+
 def _check_periodic(state: AgentState) -> str | None:
     """Trigger 7: periodic deep check every PERIODIC_CHECK_INTERVAL_S.
     Trigger 7: PERIODIC_CHECK_INTERVAL_S마다 주기적 deep check.
@@ -233,9 +251,9 @@ def should_escalate(state: AgentState) -> tuple[bool, str | None]:
     Ordering / 평가 순서:
     1. Clinician on-demand (bypasses cooldown / cooldown 우회)
     2. Acute event — arrest (bypasses cooldown / cooldown 우회)
-    3. Cooldown gate (60 s)
-    4. Hypotension risk, rapid increase, quality drop,
-       cross-modal inconsistency, periodic check.
+    3. Cooldown gate (60 s) — suppresses brief storms from sustained alarms.
+    4. Triage alarm (ADR-023, live), then hypotension / rapid increase /
+       quality drop / cross-modal (dormant), then periodic check.
     """
     # 1. Clinician on-demand — always honored / 항상 적용.
     reason = _check_clinician_on_demand(state)
@@ -251,8 +269,10 @@ def should_escalate(state: AgentState) -> tuple[bool, str | None]:
     if _within_cooldown(state):
         return False, None
 
-    # 4. Remaining triggers / 잔여 trigger.
+    # 4. Triage alarm (ADR-023, live state-driven driver) + remaining triggers.
+    #    Triage 알람(ADR-023, live) + 잔여 trigger (FM 기반 1–4 는 dormant).
     for check in (
+        _check_triage_alarm,
         _check_hypotension,
         _check_rapid_increase,
         _check_quality_drop,

@@ -228,6 +228,37 @@ def test_trigger_periodic_negative_too_early() -> None:
     assert not fire
 
 
+# ── Trigger 8: triage alarm (ADR-023) ──
+
+
+def test_trigger_triage_alarm_positive() -> None:
+    s = _state(
+        sim_time_s=30.0,
+        scratch={"triage_alarm_reason": "obvious_alarm (map_mmHg=45.0)"},
+    )
+    fire, reason = should_escalate(s)
+    assert fire and reason is not None and "triage_alarm" in reason
+
+
+def test_trigger_triage_alarm_negative_when_unset() -> None:
+    s = _state(sim_time_s=30.0, scratch={"triage_alarm_reason": None})
+    fire, _ = should_escalate(s)
+    assert not fire
+
+
+def test_trigger_triage_alarm_respects_cooldown() -> None:
+    """A sustained triage alarm is suppressed within cooldown (no brief storm).
+    지속 triage 알람은 cooldown 안에서 억제 — 리포트 storm 방지.
+    """
+    s = _state(
+        sim_time_s=30.0,
+        scratch={"triage_alarm_reason": "obvious_alarm (map_mmHg=45.0)"},
+        last_deep_trigger_time_s=20.0,  # within 60s cooldown
+    )
+    fire, _ = should_escalate(s)
+    assert not fire
+
+
 # ── Cooldown semantics ──
 
 
