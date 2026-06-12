@@ -5,14 +5,18 @@
 상위 패키지의 ``_common`` / ``signal_families`` 를 공유한다. 이들을 합성하는 상위
 tool(``summarize_current_state``)은 패키지 루트에 위치한다 — 폴더 계층이 곧 호출 계층.
 
-- ``get_current_state``   — 현재 vital 스냅샷 (trailing-window 평균).
-- ``get_signal_trend``    — vital 별 시간적 추세 (slope / 방향 / R²).
-- ``describe_signal``     — modality window 통계.
-- ``assess_variability``  — HRV / BPV / SVV (family 별 모듈로 분리).
-- ``compare_to_baseline`` — preop / intraop-early baseline 대비 변화.
+- ``get_current_state``    — 현재 vital 스냅샷 (trailing-window 평균).
+- ``get_signal_trend``     — vital 별 시간적 추세 (slope / 방향 / R²).
+- ``describe_signal``      — modality window 통계.
+- ``assess_variability``   — HRV / BPV / SVV (family 별 모듈로 분리).
+- ``compare_to_baseline``  — preop / intraop-early baseline 대비 변화.
+- ``assess_signal_quality``— 모달리티별 rule 기반 SQI (quality-aware producer).
 """
 from __future__ import annotations
 
+from opsight.tools.signal_state_tools.extractors.assess_signal_quality import (
+    tool_assess_signal_quality,
+)
 from opsight.tools.signal_state_tools.extractors.assess_variability import (
     tool_assess_variability,
 )
@@ -35,4 +39,5 @@ __all__ = [
     "tool_describe_signal",
     "tool_assess_variability",
     "tool_compare_to_baseline",
+    "tool_assess_signal_quality",
 ]

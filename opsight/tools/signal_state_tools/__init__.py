@@ -37,6 +37,7 @@ from opsight.tools.signal_state_tools._common import (
 )
 # Leaf tools (extractors) — read the signal directly, no inter-tool calls.
 from opsight.tools.signal_state_tools.extractors import (
+    tool_assess_signal_quality,
     tool_assess_variability,
     tool_compare_to_baseline,
     tool_describe_signal,
@@ -54,6 +55,7 @@ __all__ = [
     "tool_describe_signal",
     "tool_assess_variability",
     "tool_compare_to_baseline",
+    "tool_assess_signal_quality",
     "tool_summarize_current_state",
     "DEFAULT_SAMPLING_RATE_HZ",
     "DEFAULT_CURRENT_WINDOW_S",

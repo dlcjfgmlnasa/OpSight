@@ -660,6 +660,7 @@ def test_registry_signal_state_category():
     assert set(sa) == {
         "get_current_state", "get_signal_trend", "describe_signal",
         "assess_variability", "compare_to_baseline", "summarize_current_state",
+        "assess_signal_quality",
     }
 
 
@@ -668,7 +669,7 @@ def test_call_tool_routes_signal_state_via_dispatch(clock):
     # signal-state tools needs_signal=True
     for name in ("get_current_state", "get_signal_trend", "describe_signal",
                  "assess_variability", "compare_to_baseline",
-                 "summarize_current_state"):
+                 "summarize_current_state", "assess_signal_quality"):
         args = _minimal_args(name)
         req = ToolRequest(case_id="c1", sim_time_s=30.0, tool_name=name, args=args)
         r = call_tool(name, req, clock=clock, signal=sig)
@@ -676,7 +677,8 @@ def test_call_tool_routes_signal_state_via_dispatch(clock):
 
 
 def _minimal_args(name: str) -> dict:
-    if name in ("get_current_state", "get_signal_trend", "summarize_current_state"):
+    if name in ("get_current_state", "get_signal_trend", "summarize_current_state",
+                "assess_signal_quality"):
         return {}
     if name == "describe_signal":
         return {"modality": "ABP"}

@@ -36,6 +36,7 @@ from opsight.tools.auxiliary_tools import (
 from opsight.tools.emr_tools import tool_get_patient_context
 from opsight.envelope import ToolRequest, ToolResponse
 from opsight.tools.signal_state_tools import (
+    tool_assess_signal_quality,
     tool_assess_variability,
     tool_compare_to_baseline,
     tool_describe_signal,
@@ -164,6 +165,19 @@ TOOLS: Final[dict[str, ToolSpec]] = {
             "10 min). Returns absolute / percent change + direction."
         ),
         fn=tool_compare_to_baseline,
+        needs_signal=True,
+    ),
+    "assess_signal_quality": ToolSpec(
+        name="assess_signal_quality",
+        category="signal_state",
+        description=(
+            "Rule-based per-modality signal quality (SQI) in [0,1] from "
+            "missing-ratio + sensor-range violation + waveform flatline. "
+            "Quality-aware producer — feeds the triage router's quality gate so "
+            "a clear breach on a low-quality signal routes to investigation "
+            "(possible artifact) instead of an immediate alarm."
+        ),
+        fn=tool_assess_signal_quality,
         needs_signal=True,
     ),
     "summarize_current_state": ToolSpec(
