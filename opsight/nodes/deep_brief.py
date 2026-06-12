@@ -71,6 +71,9 @@ def _deep_args(name: str, state: AgentState, modalities: list[str]) -> dict:
                 "sampling_rate_hz": 500.0}
     if name == "summarize_current_state":
         return {}
+    # Model tools — FM-backed (Mock FM rule_based tier)
+    if name == "predict_hypotension":
+        return {}
     raise ValueError(f"unknown deep tool: {name}")
 
 

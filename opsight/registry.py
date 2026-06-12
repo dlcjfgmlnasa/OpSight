@@ -34,6 +34,7 @@ from opsight.tools.auxiliary_tools import (
     tool_surgery_context_awareness,
 )
 from opsight.tools.emr_tools import tool_get_patient_context
+from opsight.tools.model_tools import tool_predict_hypotension
 from opsight.envelope import ToolRequest, ToolResponse
 from opsight.tools.signal_state_tools import (
     tool_assess_signal_quality,
@@ -112,6 +113,20 @@ TOOLS: Final[dict[str, ToolSpec]] = {
             "to the brief LLM with [CLINICIAN-REVIEW]. Brief §[Surgery context] source."
         ),
         fn=tool_get_patient_context,
+    ),
+    # Model tools — FM-backed prediction (Mock FM rule_based tier until Stage 2)
+    "predict_hypotension": ToolSpec(
+        name="predict_hypotension",
+        category="fm",
+        description=(
+            "Near-future hypotension risk [0,1] over a horizon (default 5 min). "
+            "Mock FM (rule_based tier, ADR-011): projects MAP by its recent slope "
+            "and applies a logistic vs the 65 mmHg threshold — a *forecast*, "
+            "distinct from the router's current-state view. quality_meta carries "
+            "mock_tier; the real Biosignal FM replaces it at Stage 2."
+        ),
+        fn=tool_predict_hypotension,
+        needs_signal=True,
     ),
     # Signal Access tools (ADR-016) — plan_1.3.5
     # Signal Access tool (ADR-016) — plan_1.3.5

@@ -44,7 +44,7 @@ DEFAULT_INVESTIGATE_TOOLS: tuple[str, ...] = (
     "describe_signal",
     "assess_variability",
     "compare_to_baseline",
-    # "predict_hypotension",  # 등록 후 합류 (Stage 2)
+    "predict_hypotension",  # Mock FM rule_based tier (ADR-011/023)
 )
 
 MAX_INVESTIGATE_STEPS: int = 6  # bounded ReAct — 무한루프 방지 상한

@@ -10,8 +10,18 @@ deferred stub 헬퍼 + (축소된) tool plan. 플래그십 단일 tool ``predict
 from __future__ import annotations
 
 import time
+from typing import TYPE_CHECKING, Any
 
-from opsight.envelope import ToolRequest, ToolResponse, error_response
+from opsight.envelope import (
+    ToolRequest,
+    ToolResponse,
+    error_response,
+    ok as _shared_ok,
+)
+from opsight.leakage_guard import leakage_guard as _shared_leakage_guard
+
+if TYPE_CHECKING:
+    from opsight.sim_clock import SimClock
 
 
 # Active FM-based tool (name → one-line intent). Single flagship for v1.
@@ -50,3 +60,29 @@ def _deferred(request: ToolRequest, t0: float) -> ToolResponse:
         category="fm",
         extra={"deferred_until": "stage_2_fm_integration"},
     )
+
+
+# ── envelope helpers (category="fm") / envelope 헬퍼 ──
+
+
+def _leakage_guard(
+    request: ToolRequest, clock: SimClock, query_window_end_s: float | None = None
+) -> ToolResponse | None:
+    """fm-tagged leakage guard (thin wrapper over the shared primitive)."""
+    end = float(request.sim_time_s) if query_window_end_s is None else query_window_end_s
+    return _shared_leakage_guard(
+        request, clock, end, quality_meta={"category": "fm"}, include_extra=True,
+    )
+
+
+def _ok(request: ToolRequest, result: dict[str, Any], latency_ms: float,
+        *, quality_meta: dict[str, Any] | None = None) -> ToolResponse:
+    """fm-tagged wrapper over ``opsight.envelope.ok``."""
+    return _shared_ok(request, result, latency_ms, category="fm", quality_meta=quality_meta)
+
+
+def _error(request: ToolRequest, err_type: str, message: str, latency_ms: float,
+           *, extra: dict[str, Any] | None = None) -> ToolResponse:
+    """fm-tagged wrapper over ``opsight.envelope.error_response``."""
+    return error_response(request, err_type, message, latency_ms,
+                          category="fm", extra=extra)
