@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from opsight.envelope import ToolResponse
+    from opsight.nodes.investigate import InvestigateAction, InvestigationContext
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -51,6 +52,25 @@ _DEFAULT_DEEP = {
     "temperature": 0.2,
     "timeout_s": 50.0,  # Deep budget 60s
 }
+
+
+# Investigator (ReAct tool-selection) system prompt — ADR-023.
+# 조사자 system prompt — bounded ReAct, JSON action 1개만 출력.
+_INVESTIGATOR_SYSTEM_PROMPT = (
+    "You are an intraoperative monitoring agent investigating an AMBIGUOUS "
+    "hemodynamic state the rule-based router could not resolve (borderline value, "
+    "low signal quality, or possible artifact). Decide whether to gather more "
+    "evidence by calling ONE tool, or to conclude with a risk assessment.\n\n"
+    "Respond with EXACTLY ONE JSON object and no other text:\n"
+    '  tool call: {"action": "tool_call", "tool": "<name>", "args": {}}\n'
+    '  conclude:  {"action": "final", "assessment": {"hypotension_risk": <0..1>, '
+    '"rationale": "<short>"}}\n\n'
+    "Rules:\n"
+    "- Only call tools listed in available_tools.\n"
+    "- Do NOT assert clinical facts; give a risk estimate + brief rationale only. "
+    "The alarm decision is made by a separate rule gate, not by you.\n"
+    "- Conclude once you have enough evidence; you have a limited step budget."
+)
 
 
 # 9-section header pattern for deep brief parser.
@@ -226,8 +246,92 @@ class VLLMClient:
         text = resp.choices[0].message.content or ""
         return _parse_9_section_brief(text)
 
+    # ── decide (investigation ReAct) / decide (조사 ReAct) ──
+
+    @staticmethod
+    def _build_investigate_prompt(context: InvestigationContext) -> str:
+        """Render the investigation context into a user message.
+        조사 맥락을 user message 로 렌더링.
+        """
+        obs = VLLMClient._serialize_tool_results(context.observations)
+        return (
+            f"AMBIGUOUS state — router reasons: {context.route_decision.reasons}\n"
+            f"Current vitals: {json.dumps(context.vitals, ensure_ascii=False, default=str)}\n"
+            f"available_tools: {list(context.available_tools)}\n"
+            f"Observations so far (JSON): {obs}\n"
+            f"Step {context.step + 1} of {context.max_steps}. "
+            f"Output ONE JSON action (tool_call or final)."
+        )
+
+    def decide(self, context: InvestigationContext) -> InvestigateAction:
+        """Pick the next ReAct action via the Heavy LLM (ADR-023).
+        Heavy LLM 으로 다음 ReAct action 선택 — 도구 호출 또는 종료.
+
+        Routed to the deep (Heavy) endpoint — investigation needs reasoning. The
+        whitelist is enforced by the investigation loop; an unparseable response
+        defaults to a safe ``final`` (stop) rather than looping.
+        deep(Heavy) endpoint 로 routing. whitelist 강제는 loop 가 담당, parse 실패
+        시 안전하게 ``final`` 로 종료.
+        """
+        client = self._get_deep_client()
+        resp = client.chat.completions.create(
+            model=self._deep["model"],
+            messages=[
+                {"role": "system", "content": _INVESTIGATOR_SYSTEM_PROMPT},
+                {"role": "user", "content": self._build_investigate_prompt(context)},
+            ],
+            max_tokens=200,
+            temperature=float(self._deep["temperature"]),
+            timeout=float(self._deep["timeout_s"]),
+        )
+        text = resp.choices[0].message.content or ""
+        return _parse_investigate_action(text, tuple(context.available_tools))
+
 
 # ── 9-section parser / 9-section parser ──
+
+
+def _extract_json_object(text: str) -> dict[str, Any] | None:
+    """Extract the first JSON object from model text (markdown-fence tolerant).
+    모델 텍스트에서 첫 JSON object 추출 (markdown fence 관용). 실패 시 None.
+    """
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    if not m:
+        return None
+    try:
+        obj = json.loads(m.group(0))
+    except json.JSONDecodeError:
+        return None
+    return obj if isinstance(obj, dict) else None
+
+
+def _parse_investigate_action(
+    text: str, available_tools: tuple[str, ...]
+) -> InvestigateAction:
+    """Parse the LLM response into an :class:`InvestigateAction` (ADR-023).
+    LLM 응답을 :class:`InvestigateAction` 으로 파싱.
+
+    ``tool_call`` 은 그대로 반환(whitelist 강제는 loop 담당). ``final`` 또는 parse
+    실패는 종료. 이로써 형식이 어긋나도 무한루프 대신 안전하게 멈춘다.
+    """
+    from opsight.nodes.investigate import InvestigateAction
+
+    obj = _extract_json_object(text)
+    if obj is None:
+        return InvestigateAction(kind="final",
+                                 assessment={"rationale": "unparseable response",
+                                             "parse_error": True})
+    if obj.get("action") == "tool_call" and isinstance(obj.get("tool"), str):
+        args = obj.get("args")
+        return InvestigateAction(
+            kind="tool_call", tool_name=obj["tool"],
+            args=args if isinstance(args, dict) else {},
+        )
+    assessment = obj.get("assessment")
+    return InvestigateAction(
+        kind="final",
+        assessment=assessment if isinstance(assessment, dict) else {},
+    )
 
 
 def _parse_9_section_brief(text: str) -> dict[str, str]:
