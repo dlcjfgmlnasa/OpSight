@@ -1,5 +1,5 @@
-"""Shared internals for the fm_tools package (deferred — Stage 2).
-fm_tools 패키지 공용 내부 (deferred — Stage 2).
+"""Shared internals for the model_tools package (FM-backed; deferred — Stage 2).
+model_tools 패키지 공용 내부 (FM 백엔드 기반; deferred — Stage 2).
 
 Holds the deferred-stub helper + the (scoped-down) tool plan. Scoped to a single
 flagship tool, ``predict_hypotension``; the deferred-candidate names are kept as

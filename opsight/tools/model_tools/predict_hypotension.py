@@ -7,7 +7,7 @@ import time
 from typing import TYPE_CHECKING
 
 from opsight.envelope import ToolRequest, ToolResponse
-from opsight.tools.fm_tools._common import _deferred
+from opsight.tools.model_tools._common import _deferred
 
 if TYPE_CHECKING:
     import torch

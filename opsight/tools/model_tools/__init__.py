@@ -1,5 +1,8 @@
-"""FM-based tools (deferred placeholder package — Stage 2 FM integration).
-FM 기반 tool (예비 placeholder 패키지 — Stage 2 FM 통합 시 구현).
+"""Model tools — tools whose answer comes from the learned FM backend.
+모델 tool — 답이 학습된 FM 백엔드에서 나오는 tool (rule/통계/조회와 구분).
+
+(패키지명은 결과물 기준 ``model_tools``; 백엔드 정체는 그대로 FM —
+``BiosignalFMInterface`` / ``category="fm"`` / ``mock_tier``. Stage 2 FM 통합 시 구현.)
 
 ⚠️ STATUS / 상태:
    Scoped down to a **single flagship tool**, ``predict_hypotension`` (early
@@ -32,8 +35,8 @@ Spec source / spec 출처: ``.plans/stage1_preparation/plan_1.7_tool_spec.md``,
 """
 from __future__ import annotations
 
-from opsight.tools.fm_tools._common import FM_TOOL_PLAN
-from opsight.tools.fm_tools.predict_hypotension import tool_predict_hypotension
+from opsight.tools.model_tools._common import FM_TOOL_PLAN
+from opsight.tools.model_tools.predict_hypotension import tool_predict_hypotension
 
 __all__ = [
     "FM_TOOL_PLAN",
