@@ -39,6 +39,8 @@ def _shallow_tool_args(
         return {}
     if name == "get_current_state":
         return {}
+    if name == "assess_signal_quality":
+        return {}  # score all present tracks
     raise ValueError(f"unknown shallow tool: {name}")
 
 

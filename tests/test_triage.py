@@ -167,19 +167,28 @@ def test_triage_runs_inside_compiled_graph() -> None:
 
 
 def test_triage_alarm_drives_deep_brief_in_graph() -> None:
-    """ADR-023 §5: a triage alarm escalates to a deep brief (no clinician on-demand)."""
+    """ADR-023 §5: a triage alarm escalates to a deep brief (no clinician on-demand).
+
+    Uses a CLEAN low-MAP signal (good SQI) so it is a genuine obvious_alarm — a
+    flatlined/zeros signal would correctly route to ambiguous (possible artifact).
+    """
+    import numpy as np
     import torch
 
     from opsight.graph import build_graph
 
     gclock = SimClock(start_s=0.0)
-    # zeros → MAP ~0 → obvious_alarm every tick → should escalate to deep brief.
+    rng = np.random.default_rng(0)
+    # Clean pulsatile ABP around 45 → MAP ~45 (clear breach) + high quality.
+    # 다른 vital 은 정상 범위 상수 → 결측/품질 문제 없음 → 진짜 obvious_alarm.
     signal = {
-        "ABP": torch.zeros(30 * 500), "ECG_II": torch.zeros(30 * 500),
-        "PPG": torch.zeros(30 * 500), "BIS": torch.zeros(30 * 100),
+        "ABP": torch.from_numpy(rng.normal(45.0, 2.0, 3000).astype(np.float32)),
+        "HR": torch.from_numpy(np.full(60, 80.0, dtype=np.float32)),
+        "SpO2": torch.from_numpy(np.full(60, 98.0, dtype=np.float32)),
+        "BIS": torch.from_numpy(np.full(60, 50.0, dtype=np.float32)),
     }
     graph = build_graph(
-        clock=gclock, signal=signal, modalities=["ABP", "ECG_II", "PPG", "BIS"],
+        clock=gclock, signal=signal, modalities=["ABP", "HR", "SpO2", "BIS"],
         max_ticks=3, tick_sim_advance_s=30.0,
     )
     # No clinician_on_demand set → escalation comes purely from the triage alarm.
@@ -188,3 +197,27 @@ def test_triage_alarm_drives_deep_brief_in_graph() -> None:
     assert fs.scratch.get("last_route") == "obvious_alarm"
     assert len(fs.alarm_history) >= 1
     assert len(fs.brief_history) >= 1  # alarm → deep brief followed
+
+
+def test_flatline_signal_routes_to_ambiguous_not_alarm() -> None:
+    """Quality gate (ADR-023): a flatlined (zeros) signal → low SQI → a clear
+    breach is treated as a possible artifact → AMBIGUOUS, not an immediate alarm.
+    """
+    import torch
+
+    from opsight.graph import build_graph
+
+    gclock = SimClock(start_s=0.0)
+    signal = {
+        "ABP": torch.zeros(30 * 500), "ECG_II": torch.zeros(30 * 500),
+        "PPG": torch.zeros(30 * 500), "BIS": torch.zeros(30 * 100),
+    }
+    graph = build_graph(
+        clock=gclock, signal=signal, modalities=["ABP", "ECG_II", "PPG", "BIS"],
+        max_ticks=1, tick_sim_advance_s=30.0,
+    )
+    final = graph.invoke(AgentState(case_id="c1", trace_id="t1"), {"recursion_limit": 50})
+    fs = final if isinstance(final, AgentState) else AgentState.model_validate(final)
+    assert fs.scratch.get("last_route") == "ambiguous"
+    # No decide()-capable client → investigation skipped → no blind alarm.
+    assert fs.alarm_history == []

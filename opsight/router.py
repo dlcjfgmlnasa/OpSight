@@ -219,16 +219,18 @@ def route_tick(
 
 def extract_router_inputs(
     tool_results: list[ToolResponse],
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Pull ``(vitals, trend_directions)`` from a tick's tool results.
-    한 tick 의 tool 결과에서 ``(vitals, trend_directions)`` 추출.
+) -> tuple[dict[str, Any], dict[str, Any], float | None]:
+    """Pull ``(vitals, trend_directions, quality)`` from a tick's tool results.
+    한 tick 의 tool 결과에서 ``(vitals, trend_directions, quality)`` 추출.
 
-    Bridges the shallow sweep (``get_current_state`` + ``summarize_current_state``)
-    to :func:`route_tick`. Missing/failed tools degrade to ``{}``.
-    shallow sweep 결과를 :func:`route_tick` 입력으로 연결. 부재/실패 시 ``{}``.
+    Bridges the shallow sweep (``get_current_state`` + ``summarize_current_state``
+    + ``assess_signal_quality``) to :func:`route_tick`. ``quality`` is the overall
+    SQI [0,1] (``None`` if absent). Missing/failed tools degrade to ``{}``/``None``.
+    shallow sweep 결과를 :func:`route_tick` 입력으로 연결. 부재/실패 시 ``{}``/``None``.
     """
     vitals: dict[str, Any] = {}
     trends: dict[str, Any] = {}
+    quality: float | None = None
     for r in tool_results:
         if not r.ok or r.result is None:
             continue
@@ -236,7 +238,9 @@ def extract_router_inputs(
             vitals = r.result.get("vitals", {})
         elif r.tool_name == "summarize_current_state":
             trends = r.result.get("trend_directions", {})
-    return vitals, trends
+        elif r.tool_name == "assess_signal_quality":
+            quality = r.result.get("overall")
+    return vitals, trends, quality
 
 
 __all__ = [

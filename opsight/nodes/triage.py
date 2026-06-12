@@ -58,9 +58,11 @@ def run_triage(
     Returns a new ``AgentState`` with ``alarm_history`` / ``scratch`` updated;
     never raises on a missing/limited LLM (graceful degrade).
     """
-    vitals, trends = extract_router_inputs(state.last_tool_results)
-    # quality / agreement have no producer yet (FM tools deferred) → None (skip).
-    decision = route_tick(vitals, trends, config=router_config)
+    vitals, trends, quality = extract_router_inputs(state.last_tool_results)
+    # quality from assess_signal_quality (SQI); agreement (cross-modal) has no
+    # producer yet → None (skip). A clear breach on low-quality signal routes to
+    # investigation (possible artifact) instead of an immediate alarm (ADR-023).
+    decision = route_tick(vitals, trends, quality=quality, config=router_config)
 
     alarms = list(state.alarm_history)
     scratch = dict(state.scratch)

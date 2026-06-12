@@ -126,19 +126,21 @@ def _resp(tool_name: str, result: dict) -> ToolResponse:
     )
 
 
-def test_extract_router_inputs_pulls_vitals_and_trends() -> None:
+def test_extract_router_inputs_pulls_vitals_trends_quality() -> None:
     results = [
         _resp("get_current_state", {"vitals": {"map_mmHg": 62.0, "hr_bpm": 88.0}}),
         _resp("summarize_current_state", {"trend_directions": {"map_mmHg": "falling"}}),
+        _resp("assess_signal_quality", {"overall": 0.85}),
     ]
-    vitals, trends = extract_router_inputs(results)
+    vitals, trends, quality = extract_router_inputs(results)
     assert vitals == {"map_mmHg": 62.0, "hr_bpm": 88.0}
     assert trends == {"map_mmHg": "falling"}
+    assert quality == 0.85
 
 
 def test_extract_router_inputs_degrades_on_missing_tools() -> None:
-    vitals, trends = extract_router_inputs([])
-    assert vitals == {} and trends == {}
+    vitals, trends, quality = extract_router_inputs([])
+    assert vitals == {} and trends == {} and quality is None
 
 
 def test_end_to_end_extract_then_route() -> None:
@@ -147,6 +149,6 @@ def test_end_to_end_extract_then_route() -> None:
                                                "spo2_pct": 98.0, "bis": 50.0}}),
         _resp("summarize_current_state", {"trend_directions": {"map_mmHg": "falling"}}),
     ]
-    vitals, trends = extract_router_inputs(results)
-    d = route_tick(vitals, trends)
+    vitals, trends, quality = extract_router_inputs(results)
+    d = route_tick(vitals, trends, quality=quality)
     assert d.route is Route.AMBIGUOUS  # 68 falling toward 65 → borderline

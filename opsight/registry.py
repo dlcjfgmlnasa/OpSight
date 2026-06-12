@@ -201,11 +201,14 @@ SHALLOW_TOOL_NAMES: Final[tuple[str, ...]] = (
     # Rule-based current-state assessment (deterministic) + signal access
     "summarize_current_state",
     "get_current_state",
+    # Quality-aware producer — feeds the triage router's quality gate (ADR-023).
+    "assess_signal_quality",
 )
 """Shallow-loop tool sweep (project_brief §6.1).
 
-Shallow loop 가 호출하는 tool (FM forecast + EMR 제거 후).
+Shallow loop 가 호출하는 tool.
 - Rule-based 현재 상태: summarize_current_state, get_current_state
+- 신호 품질(SQI): assess_signal_quality → router quality gate (애매한 noise 감지)
 """
 
 
