@@ -116,11 +116,13 @@ def test_heavy_missing_lowers_sqi(clock) -> None:
     assert r.result["scores"]["HR"] == pytest.approx(0.5)  # (0.75-0.5)/0.5 penalty
 
 
-def test_all_nan_zero_sqi(clock) -> None:
+def test_all_nan_absent_not_zero(clock) -> None:
+    # A fully-absent channel is None (excluded), NOT sqi 0 — it must not gate alarms.
     sig = {"HR": torch.from_numpy(np.full(60, np.nan, dtype=np.float32))}
     r = tool_assess_signal_quality(_req({}), clock, sig)
     assert r.ok
-    assert r.result["scores"]["HR"] == 0.0
+    assert r.result["scores"]["HR"] is None
+    assert r.result["overall"] is None and r.result["primary_worst"] is None
 
 
 # ── Aggregation ──

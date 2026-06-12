@@ -50,7 +50,11 @@ class Route(str, Enum):
 # 주: router 는 혈역학(MAP/HR)+산소화(SpO2) 알람만. BIS(마취 심도)는 알람 trigger 아님.
 _DEFAULT_THRESHOLDS: dict[str, tuple[float | None, float | None]] = {
     "map_mmHg": (65.0, 110.0),
-    "hr_bpm": (50.0, 100.0),
+    # HR upper raised 100→110: mild intraoperative tachycardia (100–110, surgical
+    # stimulation / light anesthesia) is common and usually benign; concern at >110.
+    # (real-data finding: HR borderline clustered 90–102, demo cohort 2026-06-12.)
+    # [CLINICIAN-REVIEW: 의료진 검토 필요]
+    "hr_bpm": (50.0, 110.0),
     "spo2_pct": (92.0, None),
 }
 # Ambiguity margin per vital — relative band around the threshold (NOT magic

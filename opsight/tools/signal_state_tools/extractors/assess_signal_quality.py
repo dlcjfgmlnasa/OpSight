@@ -88,14 +88,18 @@ def _sqi_one(arr: np.ndarray, track_key: str, rate_hz: float) -> dict[str, Any]:
     """
     n = int(arr.size)
     if n == 0:
-        return {"sqi": 0.0, "missing_ratio": 1.0, "flatline": False,
+        return {"sqi": None, "missing_ratio": 1.0, "flatline": False,
                 "sudden_jump": False, "range_violation_ratio": 0.0,
-                "n_samples": 0, "note": "empty"}
+                "n_samples": 0, "note": "absent"}
     missing = float(np.mean(np.isnan(arr)))
     if missing >= 1.0:
-        return {"sqi": 0.0, "missing_ratio": 1.0, "flatline": False,
+        # All-NaN window = the channel is ABSENT this tick (not "bad quality").
+        # sqi=None → excluded from aggregation, consistent with the router ignoring
+        # a missing vital (don't let an absent channel gate alarms).
+        # 통째 결측 = 부재(저품질 아님). None → 집계 제외 (결측이 알람 못 막게).
+        return {"sqi": None, "missing_ratio": 1.0, "flatline": False,
                 "sudden_jump": False, "range_violation_ratio": 0.0,
-                "n_samples": n, "note": "all NaN"}
+                "n_samples": n, "note": "absent (all NaN)"}
     valid = arr[~np.isnan(arr)]
     rng = _PLAUSIBLE_RANGE.get(track_key)
     viol = float(np.mean((valid < rng[0]) | (valid > rng[1]))) if rng is not None else 0.0
@@ -169,13 +173,14 @@ def tool_assess_signal_quality(
         scores[tk] = d["sqi"]
         details[tk] = d
 
-    vals = list(scores.values())
+    # Aggregations exclude absent channels (sqi=None).
+    vals = [s for s in scores.values() if s is not None]
     overall = float(round(sum(vals) / len(vals), 3)) if vals else None
     worst = float(min(vals)) if vals else None
     # Worst over PRIMARY hemodynamic/oxygenation channels only — the router's
     # quality gate uses this (a dead sparse BT/EtCO2 must not gate alarms).
     primary = [s for tk, s in scores.items()
-               if any(m in tk.upper() for m in _PRIMARY_MARKERS)]
+               if s is not None and any(m in tk.upper() for m in _PRIMARY_MARKERS)]
     primary_worst = float(min(primary)) if primary else None
 
     result = {
