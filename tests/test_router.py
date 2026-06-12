@@ -130,12 +130,13 @@ def test_extract_router_inputs_pulls_vitals_trends_quality() -> None:
     results = [
         _resp("get_current_state", {"vitals": {"map_mmHg": 62.0, "hr_bpm": 88.0}}),
         _resp("summarize_current_state", {"trend_directions": {"map_mmHg": "falling"}}),
-        _resp("assess_signal_quality", {"overall": 0.85}),
+        _resp("assess_signal_quality",
+              {"overall": 0.85, "worst": 0.10, "primary_worst": 0.30}),
     ]
     vitals, trends, quality = extract_router_inputs(results)
     assert vitals == {"map_mmHg": 62.0, "hr_bpm": 88.0}
     assert trends == {"map_mmHg": "falling"}
-    assert quality == 0.85
+    assert quality == 0.30  # primary_worst (hemodynamic channels), not overall/worst
 
 
 def test_extract_router_inputs_degrades_on_missing_tools() -> None:

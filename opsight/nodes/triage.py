@@ -40,6 +40,12 @@ if TYPE_CHECKING:
     from opsight.trace import TraceWriter
 
 
+# Below this SQI an investigation alarm is suppressed: a prediction built on
+# artifact-quality signal (e.g., MAP 80→20 line flush) is likely a false alarm.
+# 이 SQI 미만이면 investigation 알람 억제 — 아티팩트급 신호 기반 예측은 헛알람 가능성.
+_ARTIFACT_QUALITY_GATE: float = 0.4
+
+
 def run_triage(
     state: AgentState,
     *,
@@ -107,7 +113,8 @@ def run_triage(
                 "hit_step_limit": result.hit_step_limit,
             }
             fire, gate_reason = alarm_gate(result.assessment)
-            if fire:
+            artifact = quality is not None and quality < _ARTIFACT_QUALITY_GATE
+            if fire and not artifact:
                 alarms.append(AlarmRecord(
                     sim_time_s=state.sim_time_s, source="investigation",
                     route=decision.route.value, reason=gate_reason,
@@ -115,6 +122,15 @@ def run_triage(
                 scratch["triage_alarm_reason"] = f"investigation ({gate_reason})"
                 if trace is not None:
                     trace.event("alarm", {"source": "investigation", "reason": gate_reason},
+                                sim_time_s=state.sim_time_s)
+            elif fire and artifact:
+                # Suppress: prediction built on artifact-quality signal → likely
+                # false alarm. Recorded (not silently dropped) for audit.
+                scratch["last_investigation"]["alarm_suppressed"] = (
+                    f"artifact_quality ({quality:.2f} < {_ARTIFACT_QUALITY_GATE})")
+                if trace is not None:
+                    trace.event("alarm_suppressed",
+                                {"reason": gate_reason, "quality": quality},
                                 sim_time_s=state.sim_time_s)
         else:
             # No decide()-capable client → investigation skipped (graceful).

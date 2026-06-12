@@ -40,11 +40,17 @@ class Route(str, Enum):
 # Clinical thresholds [CLINICIAN-REVIEW: 의료진 검토 필요] — mirror summarize.py;
 # unify + externalize to router_config.yaml per ADR-023. (low, high); None = 무한.
 # 임상 임계값 — summarize.py 와 동일 lit-standard. 추후 YAML 외부화 + 단일화.
+#
+# NOTE: the router decides HEMODYNAMIC alarms (MAP/HR) + oxygenation (SpO2). BIS
+# is anesthesia DEPTH (a state, not an emergency — BIS 30 in maintenance is normal
+# /intended), so it is intentionally NOT a router alarm trigger. BIS is still
+# reported by ``summarize_current_state`` for the deep brief. (real-data finding:
+# BIS-driven over-alarming, demo_real_stream case 1, 2026-06-12.)
+# 주: router 는 혈역학(MAP/HR)+산소화(SpO2) 알람만. BIS(마취 심도)는 알람 trigger 아님.
 _DEFAULT_THRESHOLDS: dict[str, tuple[float | None, float | None]] = {
     "map_mmHg": (65.0, 110.0),
     "hr_bpm": (50.0, 100.0),
     "spo2_pct": (92.0, None),
-    "bis": (40.0, 60.0),
 }
 # Ambiguity margin per vital — relative band around the threshold (NOT magic
 # numbers; calibrate on cohort, ADR-023 §4).
@@ -53,7 +59,6 @@ _DEFAULT_MARGINS: dict[str, float] = {
     "map_mmHg": 5.0,
     "hr_bpm": 10.0,
     "spo2_pct": 3.0,
-    "bis": 5.0,
 }
 # Signal-quality / cross-modal-agreement gates (hooks; no producer until FM
 # assess_signal_quality / cross_modal land — pass None to skip).
@@ -224,9 +229,11 @@ def extract_router_inputs(
     한 tick 의 tool 결과에서 ``(vitals, trend_directions, quality)`` 추출.
 
     Bridges the shallow sweep (``get_current_state`` + ``summarize_current_state``
-    + ``assess_signal_quality``) to :func:`route_tick`. ``quality`` is the overall
-    SQI [0,1] (``None`` if absent). Missing/failed tools degrade to ``{}``/``None``.
-    shallow sweep 결과를 :func:`route_tick` 입력으로 연결. 부재/실패 시 ``{}``/``None``.
+    + ``assess_signal_quality``) to :func:`route_tick`. ``quality`` is the worst SQI
+    over **primary** hemodynamic/oxygenation channels (ABP/HR/SpO2) — a single
+    artifact-quality primary channel (e.g. the ABP behind MAP) makes the tick
+    cautious, but a sparse/dead irrelevant channel (BT/EtCO2) does NOT. ``None`` if absent.
+    ``quality`` 는 primary 채널(ABP/HR/SpO2)의 worst SQI. 부재/실패 시 ``{}``/``None``.
     """
     vitals: dict[str, Any] = {}
     trends: dict[str, Any] = {}
@@ -239,7 +246,7 @@ def extract_router_inputs(
         elif r.tool_name == "summarize_current_state":
             trends = r.result.get("trend_directions", {})
         elif r.tool_name == "assess_signal_quality":
-            quality = r.result.get("overall")
+            quality = r.result.get("primary_worst")
     return vitals, trends, quality
 
 

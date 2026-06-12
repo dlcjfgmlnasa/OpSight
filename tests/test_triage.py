@@ -28,13 +28,18 @@ def clock() -> SimClock:
     return c
 
 
-def _state(vitals: dict, trends: dict | None = None) -> AgentState:
+def _state(vitals: dict, trends: dict | None = None,
+           quality: float | None = None) -> AgentState:
     results = [
         ToolResponse(case_id="c1", sim_time_s=30.0, tool_name="get_current_state",
                      result={"vitals": vitals}, quality_meta={}, latency_ms=0.0),
         ToolResponse(case_id="c1", sim_time_s=30.0, tool_name="summarize_current_state",
                      result={"trend_directions": trends or {}}, quality_meta={}, latency_ms=0.0),
     ]
+    if quality is not None:
+        results.append(ToolResponse(
+            case_id="c1", sim_time_s=30.0, tool_name="assess_signal_quality",
+            result={"primary_worst": quality}, quality_meta={}, latency_ms=0.0))
     return AgentState(case_id="c1", trace_id="t1", sim_time_s=30.0,
                       last_tool_results=results)
 
@@ -91,6 +96,26 @@ def test_investigation_alarm_sets_escalation_signal(clock) -> None:
     out = run_triage(st, clock=clock, signal={},
                      llm_client=_FinalInvestigator({"hypotension_risk": 0.8}))
     assert "investigation" in out.scratch["triage_alarm_reason"]
+
+
+def test_investigation_alarm_suppressed_on_artifact_quality(clock) -> None:
+    # MAP 20 with artifact-quality signal: investigation says risk 1.0 but the
+    # alarm is SUPPRESSED (likely line flush, not real). (ADR-023 / case-1 finding.)
+    st = _state({"map_mmHg": 20.0, "hr_bpm": 75.0}, quality=0.2)  # artifact-low
+    out = run_triage(st, clock=clock, signal={},
+                     llm_client=_FinalInvestigator({"hypotension_risk": 1.0}))
+    assert out.alarm_history == []                       # suppressed
+    assert "alarm_suppressed" in out.scratch["last_investigation"]
+    assert out.scratch.get("triage_alarm_reason") is None
+
+
+def test_investigation_alarm_not_suppressed_on_good_quality(clock) -> None:
+    # MAP 63 borderline → ambiguous → investigation; good quality → alarm fires.
+    st = _state({"map_mmHg": 63.0, "hr_bpm": 75.0, "spo2_pct": 98.0}, quality=0.9)
+    out = run_triage(st, clock=clock, signal={},
+                     llm_client=_FinalInvestigator({"hypotension_risk": 0.9}))
+    assert len(out.alarm_history) == 1                   # fires
+    assert out.alarm_history[0].source == "investigation"
 
 
 # ── Ambiguous → investigation ──

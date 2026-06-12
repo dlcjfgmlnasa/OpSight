@@ -71,21 +71,49 @@ def test_constant_numeric_vital_not_flatlined(clock) -> None:
 
 
 def test_out_of_range_lowers_sqi(clock) -> None:
-    # half the HR samples are physiologically impossible (>300)
-    sig = {"HR": torch.from_numpy(np.array([75.0] * 30 + [500.0] * 30, dtype=np.float32))}
-    r = tool_assess_signal_quality(_req({"window_s": 60}), clock, sig)  # whole array
+    # constant impossible HR (>300) → full range violation, no sudden jump → SQI 0
+    sig = {"HR": torch.from_numpy(np.full(60, 350.0, dtype=np.float32))}
+    r = tool_assess_signal_quality(_req({"window_s": 60}), clock, sig)
     assert r.ok
-    assert r.result["details"]["HR"]["range_violation_ratio"] == pytest.approx(0.5)
-    assert r.result["scores"]["HR"] == pytest.approx(0.5)
+    assert r.result["details"]["HR"]["range_violation_ratio"] == pytest.approx(1.0)
+    assert r.result["scores"]["HR"] == pytest.approx(0.0)
 
 
-def test_missing_lowers_sqi(clock) -> None:
+def test_sudden_jump_flagged_as_artifact(clock) -> None:
+    # numeric MAP with an implausible 80→20 step (line flush) → artifact → low SQI.
+    arr = np.full(20, 80.0, dtype=np.float32)
+    arr[10] = 20.0  # single-sample dip = sudden jump (Δ60 > 25)
+    r = tool_assess_signal_quality(_req({"window_s": 60}), clock, {"ABP": torch.from_numpy(arr)})
+    assert r.ok
+    assert r.result["details"]["ABP"]["sudden_jump"] is True
+    assert r.result["scores"]["ABP"] <= 0.2
+
+
+def test_gradual_change_not_flagged(clock) -> None:
+    # a gradual MAP drift (no implausible step) is NOT an artifact.
+    arr = np.linspace(80.0, 60.0, 60).astype(np.float32)
+    r = tool_assess_signal_quality(_req({"window_s": 60}), clock, {"ABP": torch.from_numpy(arr)})
+    assert r.ok
+    assert r.result["details"]["ABP"]["sudden_jump"] is False
+    assert r.result["scores"]["ABP"] > 0.9
+
+
+def test_sparse_sampling_tolerated(clock) -> None:
+    # 50% NaN is normal sparse numeric sampling (Solar8000 ~2 s @ 1 Hz) → SQI 1.0.
     arr = np.array([75.0] * 30 + [np.nan] * 30, dtype=np.float32)
-    sig = {"HR": torch.from_numpy(arr)}
-    r = tool_assess_signal_quality(_req({"window_s": 60}), clock, sig)  # whole array
+    r = tool_assess_signal_quality(_req({"window_s": 60}), clock, {"HR": torch.from_numpy(arr)})
     assert r.ok
     assert r.result["details"]["HR"]["missing_ratio"] == pytest.approx(0.5)
-    assert r.result["scores"]["HR"] == pytest.approx(0.5)
+    assert r.result["scores"]["HR"] == pytest.approx(1.0)  # tolerated
+
+
+def test_heavy_missing_lowers_sqi(clock) -> None:
+    # 75% missing exceeds tolerance → real gap → SQI drops.
+    arr = np.array([75.0] * 15 + [np.nan] * 45, dtype=np.float32)
+    r = tool_assess_signal_quality(_req({"window_s": 60}), clock, {"HR": torch.from_numpy(arr)})
+    assert r.ok
+    assert r.result["details"]["HR"]["missing_ratio"] == pytest.approx(0.75)
+    assert r.result["scores"]["HR"] == pytest.approx(0.5)  # (0.75-0.5)/0.5 penalty
 
 
 def test_all_nan_zero_sqi(clock) -> None:
