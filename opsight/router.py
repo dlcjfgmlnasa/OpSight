@@ -34,6 +34,7 @@ class Route(str, Enum):
     OBVIOUS_ALARM = "obvious_alarm"
     OBVIOUS_NORMAL = "obvious_normal"
     AMBIGUOUS = "ambiguous"
+    NO_DATA = "no_data"        # no assessable vital present — don't investigate/alarm
 
 
 # ── Config / 설정 ──
@@ -189,6 +190,7 @@ def route_tick(
 
     quality_bad = quality is not None and quality < config.quality_gate
     agreement_bad = agreement is not None and agreement < config.agreement_gate
+    n_present = len(config.thresholds) - len(missing)
 
     reasons: list[str] = []
     if clear:
@@ -196,22 +198,28 @@ def route_tick(
     if borderline:
         reasons.append("borderline: " + ", ".join(borderline))
     if missing:
-        reasons.append("missing: " + ", ".join(missing))
+        reasons.append("missing: " + ", ".join(missing))  # informative only — not a driver
     if quality_bad:
         reasons.append(f"quality_below_gate ({quality:.2f}<{config.quality_gate})")
     if agreement_bad:
         reasons.append(f"agreement_below_gate ({agreement:.2f}<{config.agreement_gate})")
 
-    # Decision. A clear breach alarms only when trustworthy (good quality + agreement);
-    # an untrustworthy breach is sent to investigation (could be artifact).
-    # clear breach 는 신뢰 가능할 때만 알람; 신뢰 불가(품질/일치 나쁨)면 조사로.
-    if clear and not (quality_bad or agreement_bad):
+    # Decision. A MISSING vital is simply not assessed — it does NOT drive
+    # ambiguity (you don't investigate/alarm on a vital that isn't measured). Only
+    # PRESENT vitals (+ quality/agreement) decide the route. With nothing present,
+    # we cannot say "normal" → NO_DATA (benign: no alarm, no investigation).
+    # 결측 vital 은 그냥 평가 안 함 — ambiguity 유발 안 함. 있는 vital 만으로 결정.
+    # 전부 결측이면 "정상" 이라 할 수 없으니 NO_DATA(무해: 알람·조사 없음).
+    if n_present == 0:
+        route = Route.NO_DATA
+        reasons.append("no_assessable_vital")
+    elif clear and not (quality_bad or agreement_bad):
         route = Route.OBVIOUS_ALARM
-    elif clear or borderline or missing or quality_bad or agreement_bad:
+    elif clear or borderline or quality_bad or agreement_bad:
         route = Route.AMBIGUOUS
     else:
         route = Route.OBVIOUS_NORMAL
-        reasons.append("all_vitals_comfortably_normal")
+        reasons.append("present_vitals_normal")
 
     return RouteDecision(
         route=route,

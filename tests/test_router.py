@@ -56,10 +56,19 @@ def test_borderline_map_is_ambiguous() -> None:
     assert not d.clear_breaches
 
 
-def test_missing_map_is_ambiguous() -> None:
-    d = route_tick({"hr_bpm": 75.0, "spo2_pct": 98.0, "bis": 50.0})  # map absent
-    assert d.route is Route.AMBIGUOUS
-    assert "map_mmHg" in d.missing
+def test_missing_vital_ignored_when_others_normal() -> None:
+    # MAP not measured (no arterial line) but HR/SpO2 present & normal → just don't
+    # look at MAP; assess what's there → normal. Missing is NOT a reason to investigate.
+    d = route_tick({"hr_bpm": 75.0, "spo2_pct": 98.0})  # map absent
+    assert d.route is Route.OBVIOUS_NORMAL
+    assert "map_mmHg" in d.missing  # recorded for transparency, but not a driver
+
+
+def test_all_missing_is_no_data() -> None:
+    # Nothing measured → can't say "normal"; benign NO_DATA (no alarm, no investigate).
+    d = route_tick({})
+    assert d.route is Route.NO_DATA
+    assert set(d.missing) == {"map_mmHg", "hr_bpm", "spo2_pct"}
 
 
 def test_in_range_but_falling_toward_low_is_ambiguous() -> None:
